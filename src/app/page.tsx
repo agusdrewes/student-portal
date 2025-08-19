@@ -4,6 +4,12 @@ export default function Home() {
   return (
     <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
       <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
+        {/* Mensaje de verificación de deploy */}
+        <div className="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 mb-4 rounded">
+          <h1 className="text-xl font-bold">Hola equipo UADE, soy el DevOps</h1>
+          <p className="text-sm">Verificando deploy automático...</p>
+        </div>
+        
         <Image
           className="dark:invert"
           src="/next.svg"
