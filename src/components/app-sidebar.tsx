@@ -92,9 +92,10 @@ export function AppSidebar() {
 
                   <SidebarMenuSubItem>
                     <SidebarMenuButton
-                      isActive={isActive(pathname, "/calendario")}
+                      isActive={pathname === "/eventos"}
+                      className="data-[active=true]:text-[#6F97F0]  "
                     >
-                      <Link href="/calendario">Calendario</Link>
+                      <Link href="/eventos">Calendario</Link>
                     </SidebarMenuButton>
                   </SidebarMenuSubItem>
 

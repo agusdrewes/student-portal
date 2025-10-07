@@ -1,5 +1,7 @@
 // src/app/miscursos/page.tsx
-import React from "react";
+"use client";
+
+import React, { useState } from "react";
 import { PanelLeft, Clock, SquareUser, MapPin } from "lucide-react";
 
 import {
@@ -23,6 +25,8 @@ import {
 import Link from "next/link";
 
 export default function MisCursosPage() {
+  const [semestreSeleccionado, setSemestreSeleccionado] = useState<string>("");
+
   const cursosActuales = [
     {
       nombre: "Cálculo Diferencial",
@@ -77,6 +81,18 @@ export default function MisCursosPage() {
     "2026": ["1er semestre"],
   };
 
+  const historialFiltrado = semestreSeleccionado
+    ? historial.filter(h =>
+        semestreSeleccionado.includes("1er")
+          ? h.semestre.endsWith("-I") &&
+            h.semestre.startsWith(semestreSeleccionado.split("-")[0])
+          : semestreSeleccionado.includes("2do")
+            ? h.semestre.endsWith("-II") &&
+              h.semestre.startsWith(semestreSeleccionado.split("-")[0])
+            : false
+      )
+    : historial;
+
   return (
     <main className=" w-full flex flex-col gap-8 bg-white">
       <div className="pt-9.5 pb-9.5 pl-8 flex gap-4 items-center space-x-2 text-sm text-muted-foreground border-b h-[53px]">
@@ -102,7 +118,7 @@ export default function MisCursosPage() {
 
           <div className="pt-8 pl-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {cursosActuales.map((curso, i) => (
-              <Link href={`/curso/${i}`} key={i}>
+              <Link href={`/misCursos/${i}`} key={i}>
                 <div className="cursor-pointer border rounded-xl bg-white space-y-1 hover:shadow-md transition-shadow duration-300">
                   <div className="flex flex-row items-center p-4 pr-6 rounded-t-xl justify-between bg-[#6F97F0]">
                     <h3 className="font-medium text-base">{curso.nombre}</h3>
@@ -134,7 +150,7 @@ export default function MisCursosPage() {
         <section className="pt-9">
           <div className="flex flex-row justify-between items-center pb-6">
             <h1 className="text-2xl font-medium">Historial Académico</h1>
-            <Select>
+            <Select onValueChange={setSemestreSeleccionado}>
               <SelectTrigger className="w-[280px]">
                 <SelectValue placeholder="Todos los semestres" />
               </SelectTrigger>
@@ -155,6 +171,8 @@ export default function MisCursosPage() {
               </SelectContent>
             </Select>
           </div>
+
+          {/* Tabla */}
           <div className="overflow-auto pl-4">
             <table className="w-full border-collapse text-sm text-left rounded-md overflow-hidden pr-6">
               <thead className="bg-gray-100">
@@ -169,7 +187,7 @@ export default function MisCursosPage() {
                 </tr>
               </thead>
               <tbody>
-                {historial.map((h, i) => (
+                {historialFiltrado.map((h, i) => (
                   <tr key={i} className="border-l border-r border-b">
                     <td className="p-2">{h.materia}</td>
                     <td className="p-2">{h.semestre}</td>
