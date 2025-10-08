@@ -38,6 +38,11 @@ const isActive = (pathname: string, href: string) =>
 export function AppSidebar() {
   const pathname = usePathname();
 
+  // 🔔 Simulación de notificaciones no leídas
+  const unreadCount = 3;
+  const notificationsHref = "/notificaciones";
+  const isNotificationsActive = isActive(pathname, notificationsHref);
+
   return (
     <Sidebar className="bg-[#FAFAFA]">
       {/* Header con logo */}
@@ -50,6 +55,7 @@ export function AppSidebar() {
         </div>
       </SidebarHeader>
 
+      {/* Contenido principal */}
       <SidebarContent className="border-t">
         <SidebarGroup>
           <SidebarGroupLabel>Plataforma</SidebarGroupLabel>
@@ -70,13 +76,13 @@ export function AppSidebar() {
                 </CollapsibleTrigger>
               </SidebarMenuItem>
 
-              {/* Este bloque VA FUERA del SidebarMenuItem */}
+              {/* Submenú del portal estudiante */}
               <CollapsibleContent className="font-normal px-3">
                 <SidebarMenuSub>
                   <SidebarMenuSubItem>
                     <SidebarMenuButton
                       isActive={pathname === "/misCursos"}
-                      className="data-[active=true]:text-[#6F97F0]  "
+                      className="data-[active=true]:text-[#6F97F0]"
                     >
                       <Link href="/misCursos">Mis Cursos</Link>
                     </SidebarMenuButton>
@@ -107,6 +113,7 @@ export function AppSidebar() {
               </CollapsibleContent>
             </Collapsible>
 
+            {/* Otras secciones */}
             {[
               { icon: BookOpen, label: "Biblioteca" },
               { icon: Coffee, label: "Comedor" },
@@ -133,17 +140,36 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      {/* Footer con usuario */}
-      <SidebarFooter className="flex flex-row justify-between p-4 border-t">
-        <Avatar>
-          <AvatarImage src="https://github.com/shadcn.png" />
-          <AvatarFallback>CN</AvatarFallback>
-        </Avatar>
-        <div className="flex flex-col ">
-          <span className="text-xs  text-left font-semibold">Example</span>
-          <span className="text-xs text-left font-normal">m@example.com</span>
+      {/* Footer con usuario y notificaciones */}
+      <SidebarFooter className="flex flex-row justify-between items-center p-4 border-t">
+        <div className="flex items-center gap-3">
+          <Avatar className="w-8 h-8">
+            <AvatarImage src="user.jpg" />
+            <AvatarFallback>CN</AvatarFallback>
+          </Avatar>
+
+          <div className="flex flex-col leading-tight">
+            <span className="text-xs font-semibold">Example</span>
+            <span className="text-[11px] text-gray-500">m@example.com</span>
+          </div>
         </div>
-        <BellRing size={17} className="items-center justify-between" />
+
+        {/* Campanita funcional con indicador */}
+        <Link
+          href={notificationsHref}
+          className={`relative p-1.5 rounded-full transition-colors flex items-center justify-center
+            ${
+              isNotificationsActive
+                ? "text-[#6F97F0] bg-[#E8F0FF]"
+                : "text-gray-600 hover:text-[#6F97F0] hover:bg-[#E8F0FF]/40"
+            }`}
+          title="Notificaciones"
+        >
+          <BellRing size={18} />
+          {unreadCount > 0 && (
+            <span className="absolute top-[3px] right-[3px] h-2.5 w-2.5 rounded-full bg-red-500 border border-white"></span>
+          )}
+        </Link>
       </SidebarFooter>
     </Sidebar>
   );
