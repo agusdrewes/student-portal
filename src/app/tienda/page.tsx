@@ -10,6 +10,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import Link from "next/link";
 
 export default function TiendaPage() {
   console.log("tienda cargada"); // 👈
@@ -25,6 +26,10 @@ export default function TiendaPage() {
           </BreadcrumbItem>
         </Breadcrumb>
       </div>
+      <button>
+        {" "}
+        <Link href="/tienda/cargarSaldo">Tienda</Link>
+      </button>
     </main>
   );
 }
