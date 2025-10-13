@@ -91,6 +91,7 @@ export function AppSidebar() {
                   <SidebarMenuSubItem>
                     <SidebarMenuButton
                       isActive={isActive(pathname, "/inscripciones")}
+                      className="data-[active=true]:text-[#6F97F0]"
                     >
                       <Link href="/inscripciones">Inscripciones</Link>
                     </SidebarMenuButton>

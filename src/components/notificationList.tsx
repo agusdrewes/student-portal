@@ -2,7 +2,7 @@
 
 import React, { useState /*, useEffect*/ } from "react";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface Notification {
@@ -103,7 +103,7 @@ const NotificationItem: React.FC<{ notification: Notification }> = ({
             </Badge>
 
             <div className="flex items-center text-sm text-gray-500 hover:text-gray-700">
-              <ArrowRight size={14} className="mr-1" />
+              <ArrowUpRight size={14} className="mr-1" />
               <Link href={notification.contextLink}>
                 {notification.context}
               </Link>

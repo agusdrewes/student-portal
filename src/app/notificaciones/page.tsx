@@ -14,6 +14,7 @@ import {
 import NotificationList from "@/components/notificationList";
 import { Metadata } from "next";
 import Link from "next/link";
+import ArrowUpRight from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Notificaciones | UADE Connect",
