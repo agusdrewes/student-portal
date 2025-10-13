@@ -107,7 +107,10 @@ export function AppSidebar() {
                   </SidebarMenuSubItem>
 
                   <SidebarMenuSubItem>
-                    <SidebarMenuButton isActive={isActive(pathname, "/tienda")}>
+                    <SidebarMenuButton
+                      isActive={pathname === "/tienda"}
+                      className="data-[active=true]:text-[#6F97F0]"
+                    >
                       <Link href="/tienda">Tienda</Link>
                     </SidebarMenuButton>
                   </SidebarMenuSubItem>
