@@ -1,8 +1,12 @@
 // src/app/miscursos/page.tsx
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { PanelLeft, Clock, SquareUser, MapPin } from "lucide-react";
+import {
+  getAcademicHistoryByUser,
+  getEnrollmentsByUser,
+} from "@/lib/api/enrollments";
 
 import {
   Breadcrumb,
@@ -26,54 +30,37 @@ import Link from "next/link";
 
 export default function MisCursosPage() {
   const [semestreSeleccionado, setSemestreSeleccionado] = useState<string>("");
+  const [enrollments, setEnrollments] = useState<any[]>([]);
+  const [historicEnrollments, sethistoricEnrollments] = useState<any[]>([]);
 
-  const cursosActuales = [
-    {
-      nombre: "Cálculo Diferencial",
-      horario: "Lun 16:00-18:00",
-      profesor: "Claudio Godio",
-      aula: "3003",
-      estado: "En curso",
-    },
-    {
-      nombre: "Cálculo Diferencial",
-      horario: "Lun 16:00-18:00",
-      profesor: "Claudio Godio",
-      aula: "3003",
-      estado: "En curso",
-    },
-    {
-      nombre: "Cálculo Diferencial",
-      horario: "Lun 16:00-18:00",
-      profesor: "Claudio Godio",
-      aula: "3003",
-      estado: "En curso",
-    },
-    {
-      nombre: "Cálculo Diferencial",
-      horario: "Lun 16:00-18:00",
-      profesor: "Claudio Godio",
-      aula: "3003",
-      estado: "En curso",
-    },
-  ];
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const userId = 1;
+        const data = await getEnrollmentsByUser(userId);
+        setEnrollments(data as any[]);
+        console.log(data);
+      } catch (err) {
+        console.error("❌ Error al traer inscripciones:", err);
+      }
+    }
 
-  const historial = [
-    {
-      materia: "Álgebra Lineal",
-      semestre: "2024-II",
-      profesor: "Carmen Vega",
-      nota: "8.5",
-      estado: "Aprobado",
-    },
-    {
-      materia: "Estadística I",
-      semestre: "2024-I",
-      profesor: "Alejandra Gogni",
-      nota: "2",
-      estado: "Desaprobado",
-    },
-  ];
+    fetchData();
+  }, []);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const userId = 1;
+        const data = await getAcademicHistoryByUser(userId);
+        sethistoricEnrollments(data as any[]);
+      } catch (err) {
+        console.error("❌ Error al traer inscripciones:", err);
+      }
+    }
+
+    fetchData();
+  }, []);
 
   const semestresPorAnio = {
     "2024": ["1er semestre", "2do semestre"],
@@ -81,17 +68,15 @@ export default function MisCursosPage() {
     "2026": ["1er semestre"],
   };
 
+  const semestresUnicos = Array.from(
+    new Set(historicEnrollments.map(e => `${e.year}-${e.semester}`))
+  ).sort((a, b) => b.localeCompare(a)); // Orden descendente
+
   const historialFiltrado = semestreSeleccionado
-    ? historial.filter(h =>
-        semestreSeleccionado.includes("1er")
-          ? h.semestre.endsWith("-I") &&
-            h.semestre.startsWith(semestreSeleccionado.split("-")[0])
-          : semestreSeleccionado.includes("2do")
-            ? h.semestre.endsWith("-II") &&
-              h.semestre.startsWith(semestreSeleccionado.split("-")[0])
-            : false
+    ? historicEnrollments.filter(
+        h => `${h.year}-${h.semester}` === semestreSeleccionado
       )
-    : historial;
+    : historicEnrollments;
 
   return (
     <main className=" w-full flex flex-col gap-8 bg-white">
@@ -117,27 +102,35 @@ export default function MisCursosPage() {
           <h1 className="text-2xl font-medium">Cursos Actuales</h1>
 
           <div className="pt-8 pl-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {cursosActuales.map((curso, i) => (
-              <Link href={`/misCursos/${i}`} key={i}>
+            {enrollments.map(enrollment => (
+              <Link
+                href={`/misCursos/${enrollment.course.id}`}
+                key={enrollment.course.id}
+              >
                 <div className="cursor-pointer border rounded-xl bg-white space-y-1 hover:shadow-md transition-shadow duration-300">
                   <div className="flex flex-row items-center p-4 pr-6 rounded-t-xl justify-between bg-[#6F97F0]">
-                    <h3 className="font-medium text-base">{curso.nombre}</h3>
+                    <h3 className="font-medium text-base">
+                      {enrollment.course.name}
+                    </h3>
                     <Badge variant="secondary" className="font-light">
-                      {curso.estado}
+                      En curso
                     </Badge>
                   </div>
                   <div className="p-4 gap-4 pl-6">
                     <div className="flex flex-row gap-5 items-center pb-5">
                       <Clock size={20} color="#757575" />
-                      <span>{curso.horario}</span>
+                      <span>{enrollment.commission.days} </span>
+                      <span>
+                        {enrollment.commission.startTime} -{" "}
+                        {enrollment.commission.endTime}
+                      </span>
                     </div>
                     <div className="flex flex-row gap-5 items-center pb-5">
                       <SquareUser size={20} color="#757575" />
-                      <span>{curso.profesor}</span>
+                      <span>{enrollment.commission.professorName} </span>
                     </div>
                     <div className="flex flex-row gap-5 items-center">
                       <MapPin size={20} color="#757575" />
-                      <span>{curso.aula}</span>
                     </div>
                   </div>
                 </div>
@@ -155,19 +148,13 @@ export default function MisCursosPage() {
                 <SelectValue placeholder="Todos los semestres" />
               </SelectTrigger>
               <SelectContent>
-                {Object.entries(semestresPorAnio).map(([anio, semestres]) => (
-                  <SelectGroup key={anio}>
-                    <SelectLabel>{anio}</SelectLabel>
-                    {semestres.map(semestre => (
-                      <SelectItem
-                        key={`${anio}-${semestre}`}
-                        value={`${anio}-${semestre}`}
-                      >
-                        {semestre}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                ))}
+                <SelectGroup>
+                  {semestresUnicos.map(semestre => (
+                    <SelectItem key={semestre} value={semestre}>
+                      {semestre}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
               </SelectContent>
             </Select>
           </div>
@@ -187,15 +174,24 @@ export default function MisCursosPage() {
                 </tr>
               </thead>
               <tbody>
-                {historialFiltrado.map((h, i) => (
-                  <tr key={i} className="border-l border-r border-b">
-                    <td className="p-2">{h.materia}</td>
-                    <td className="p-2">{h.semestre}</td>
-                    <td className="p-2">{h.profesor}</td>
-                    <td className="p-2">{h.nota}</td>
+                {historicEnrollments.map(enrollment => (
+                  <tr
+                    key={enrollment.id}
+                    className="border-l border-r border-b"
+                  >
+                    <td className="p-2">{enrollment.course.name}</td>
+                    <td className="p-2">{enrollment.semester}</td>
+                    <td className="p-2">
+                      {enrollment.commission.professorName}
+                    </td>
+                    <td className="p-2">{enrollment.course.finalnote}</td>
                     <td className="p-2">
                       <Badge variant="secondary" className="font-light">
-                        {h.estado}
+                        {enrollment.status === "in_progress"
+                          ? "En curso"
+                          : enrollment.status === "completed"
+                            ? "Completado"
+                            : "Desaprobado"}
                       </Badge>
                     </td>
                   </tr>
