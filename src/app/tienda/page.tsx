@@ -1,6 +1,8 @@
-import React from "react";
+"use client";
+
+import React, { useState } from "react";
 import Link from "next/link";
-import { PanelLeft, Plus } from "lucide-react";
+import { PanelLeft, Plus, X } from "lucide-react";
 
 import {
   Breadcrumb,
@@ -9,6 +11,13 @@ import {
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Separator } from "@/components/ui/separator";
 
 // --- Datos de Ejemplo ---
 const saldoData = [
@@ -40,7 +49,9 @@ const historialCompras = [
 
 // --- Componente ---
 export default function TiendaPage() {
-  // Función para el formato de Saldo (con decimales)
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Función para el formato de Saldo
   const formatCurrency = (amount: number) => {
     const options: Intl.NumberFormatOptions = {
       style: "currency",
@@ -51,7 +62,7 @@ export default function TiendaPage() {
     return new Intl.NumberFormat("es-AR", options).format(amount);
   };
 
-  // Nueva función de formato solo para el Historial (sin decimales y sin espacio)
+  //función de formato solo para el Historial
   const formatHistoryAmount = (amount: number) => {
     const options: Intl.NumberFormatOptions = {
       style: "decimal",
@@ -62,6 +73,18 @@ export default function TiendaPage() {
       amount
     );
     return `$${formattedAmount}`;
+  };
+
+  // Datos estáticos para el popup
+  const purchaseDetails = {
+    date: "25 Octubre 2025",
+    time: "10:06",
+    entity: "Biblioteca",
+    items: [
+      { name: "Libro - Calculo diferencial e integral x 1", price: 24300 },
+      { name: "Libro - Probabilidad y estadística x 1", price: 26700 },
+    ],
+    total: 50000,
   };
 
   return (
@@ -86,7 +109,6 @@ export default function TiendaPage() {
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl font-bold">Saldo institucional</h1>
             <Link href="/tienda/cargarSaldo" passHref>
-              {/* CAMBIO: Se agregó className para el color del botón */}
               <Button className="bg-[#6F97F0] hover:bg-[#5a81d4]">
                 <Plus className="mr-2 h-4 w-4" /> Cargar Saldo
               </Button>
@@ -114,7 +136,8 @@ export default function TiendaPage() {
             {historialCompras.map(compra => (
               <div
                 key={compra.id}
-                className="bg-white border border-gray-200 rounded-xl p-4 flex justify-between items-center"
+                className="bg-white border border-gray-200 rounded-xl p-4 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors"
+                onClick={() => setIsModalOpen(true)}
               >
                 <div>
                   <p className="font-semibold text-gray-800 text-lg">
@@ -129,6 +152,64 @@ export default function TiendaPage() {
             ))}
           </div>
         </section>
+
+        {/* Popup de Resumen de Compra */}
+        <AlertDialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+          <AlertDialogContent className="sm:max-w-md">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-center text-2xl font-bold pt-4">
+                Resumen de compra
+              </AlertDialogTitle>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none disabled:pointer-events-none"
+              >
+                <X className="h-5 w-5" />
+                <span className="sr-only">Cerrar</span>
+              </button>
+            </AlertDialogHeader>
+
+            <Separator />
+
+            <div className="py-2 space-y-3">
+              <div className="text-base">
+                <span className="font-bold text-gray-900">Fecha: </span>
+                <span className="text-gray-600">
+                  {purchaseDetails.date} {purchaseDetails.time}
+                </span>
+              </div>
+              <div className="text-base">
+                <span className="font-bold text-gray-900">Entidad: </span>
+                <span className="text-gray-600">{purchaseDetails.entity}</span>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="py-2 space-y-4">
+              <h3 className="text-lg font-bold">Detalles de Pago</h3>
+              <div className="space-y-3">
+                {purchaseDetails.items.map(item => (
+                  <div key={item.name} className="flex justify-between text-sm">
+                    <span className="text-gray-600">{item.name}</span>
+                    <span className="font-medium text-gray-900">
+                      {formatHistoryAmount(item.price)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="py-2 flex justify-between">
+              <span className="text-lg font-bold">Total</span>
+              <span className="text-lg font-bold">
+                {formatHistoryAmount(purchaseDetails.total)}
+              </span>
+            </div>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </main>
   );
