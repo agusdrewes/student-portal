@@ -40,6 +40,7 @@ import {
   getEnrollmentDetailsByid,
   getAtendencessByUserID,
   deleteEnrollmentById,
+  getCoursesGradesByCommissionID,
 } from "@/lib/api/enrollments";
 
 export default function CursoDetallePage() {
@@ -51,6 +52,8 @@ export default function CursoDetallePage() {
 
   const [courseDetails, setCourseDetails] = useState<any>(null);
   const [attendances, setAttendances] = useState<any[]>([]);
+  const [grades, setGrades] = useState<any[]>([]);
+
   const [loading, setLoading] = useState(true);
 
   const [popUpBaja, setPopUpBaja] = useState(false);
@@ -62,13 +65,16 @@ export default function CursoDetallePage() {
         if (!commissionId) return;
         setLoading(true); // 🔹 empezamos a cargar
 
-        const [courseData, attendanceData] = await Promise.all([
+        const [courseData, auxAttendance, auxgrades] = await Promise.all([
           getEnrollmentDetailsByid(Number(commissionId)),
           getAtendencessByUserID(Number(commissionId)),
+          getCoursesGradesByCommissionID(Number(commissionId)),
         ]);
 
         setCourseDetails(courseData);
-        setAttendances(attendanceData);
+        setAttendances(auxAttendance);
+        setGrades(auxgrades);
+        console.log(auxgrades);
       } catch (err) {
         console.error("❌ Error al traer datos del curso:", err);
       } finally {
@@ -109,7 +115,7 @@ export default function CursoDetallePage() {
   }
 
   return (
-    <main className="w-full flex flex-col gap-8 bg-white">
+    <main className="w-full flex flex-col gap-8 bg-white mb-5">
       {/* Header y Breadcrumb */}
       <div className="pt-9.5 pb-9.5 pl-8 flex gap-4 items-center border-b h-[53px] text-sm text-muted-foreground">
         <PanelLeft size={15} />
@@ -295,8 +301,6 @@ export default function CursoDetallePage() {
                 <th className="p-2 pl-8 font-normal text-[#595959]">
                   Evaluación
                 </th>
-                <th className="p-2 font-normal text-[#595959]">Fecha</th>
-                <th className="p-2 font-normal text-[#595959]">Peso</th>
                 <th className="p-2 font-normal text-[#595959]">
                   Clasificación
                 </th>
@@ -306,35 +310,62 @@ export default function CursoDetallePage() {
             <tbody>
               <tr className="border-l border-r border-b">
                 <td className="p-2 pl-8">Primer Parcial</td>
-                <td className="p-2">15 Feb 2025</td>
-                <td className="p-2">30%</td>
-                <td className="p-2">8.5</td>
+
+                <td className="p-2">{grades?.firstExam ?? "—"}</td>
                 <td className="p-2">
-                  <Badge variant="secondary" className="font-light">
-                    Aprobado
-                  </Badge>
+                  {grades?.firstExam !== null &&
+                    grades?.firstExam !== undefined && (
+                      <Badge
+                        variant="secondary"
+                        className={`font-light ${
+                          grades.firstExam < 4
+                            ? "border border-red-500 text-red-700"
+                            : ""
+                        }`}
+                      >
+                        {grades.firstExam >= 4 ? "Aprobado" : "Desaprobado"}
+                      </Badge>
+                    )}
                 </td>
               </tr>
               <tr className="border-l border-r border-b">
                 <td className="p-2 pl-8">Segundo Parcial</td>
-                <td className="p-2">20 Abr 2025</td>
-                <td className="p-2">30%</td>
-                <td className="p-2">9.0</td>
+
+                <td className="p-2">{grades?.secondExam ?? "—"}</td>
                 <td className="p-2">
-                  <Badge variant="secondary" className="font-light">
-                    Aprobado
-                  </Badge>
+                  {grades?.secondExam !== null &&
+                    grades?.secondExam !== undefined && (
+                      <Badge
+                        variant="secondary"
+                        className={`font-light ${
+                          grades.secondExam < 4
+                            ? "border border-red-500 text-red-700"
+                            : ""
+                        }`}
+                      >
+                        {grades.secondExam >= 4 ? "Aprobado" : "Desaprobado"}
+                      </Badge>
+                    )}
                 </td>
               </tr>
               <tr className="border-l border-r border-b">
-                <td className="p-2 pl-8">TP Final</td>
-                <td className="p-2">30 Jun 2025</td>
-                <td className="p-2">40%</td>
-                <td className="p-2">9.5</td>
+                <td className="p-2 pl-8">Final</td>
+
+                <td className="p-2">{grades?.finalExam ?? "—"}</td>
                 <td className="p-2">
-                  <Badge variant="secondary" className="font-light">
-                    Aprobado
-                  </Badge>
+                  {grades?.finalExam !== null &&
+                    grades?.finalExam !== undefined && (
+                      <Badge
+                        variant="secondary"
+                        className={`font-light ${
+                          grades.finalExam < 4
+                            ? "border border-red-500 text-red-700"
+                            : ""
+                        }`}
+                      >
+                        {grades.finalExam >= 4 ? "Aprobado" : "Desaprobado"}
+                      </Badge>
+                    )}
                 </td>
               </tr>
             </tbody>
@@ -345,7 +376,7 @@ export default function CursoDetallePage() {
         <div className="overflow-auto pl-4 pt-12">
           <h1 className="text-xl font-medium pb-5">Asistencias</h1>
 
-          <div className="grid auto-cols-max grid-flow-col gap-5 pl-4">
+          <div className="grid grid-cols-4 gap-5 pl-4">
             {attendances.length === 0 ? (
               <div className="text-sm text-gray-500 italic py-6">
                 No hay asistencias registradas aún.

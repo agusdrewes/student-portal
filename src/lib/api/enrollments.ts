@@ -2,13 +2,13 @@ import { apiFetch } from "./client";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
-const userId = 1;
+const userId = 2;
 
-export async function getEnrollmentsByUser(userId: number) {
+export async function getEnrollmentsByUser() {
   return apiFetch(`/enrollments?userId=${userId}`);
 }
 
-export async function getAcademicHistoryByUser(userId: number) {
+export async function getAcademicHistoryByUser() {
   return apiFetch(`/academic-history/${userId}`);
 }
 
@@ -35,4 +35,8 @@ export async function deleteEnrollmentById(
 
 export async function getAvailableCoursesByUserId() {
   return apiFetch(`/courses/available?userId=${userId}`);
+}
+
+export async function getCoursesGradesByCommissionID(commissionId: number) {
+  return apiFetch(`/grades/user/${userId}/commission/${commissionId}`);
 }

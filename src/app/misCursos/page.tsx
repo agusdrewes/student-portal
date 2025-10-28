@@ -39,8 +39,14 @@ export default function MisCursosPage() {
     async function fetchData() {
       try {
         const userId = 1;
-        const data = await getEnrollmentsByUser(userId);
-        setEnrollments(data as any[]);
+        const data = await getEnrollmentsByUser();
+
+        // 🔹 Filtramos solo los que están en progreso
+        const inProgress = (data as any[]).filter(
+          enrollment => enrollment.status === "in_progress"
+        );
+
+        setEnrollments(inProgress);
       } catch (err) {
         console.error("❌ Error al traer inscripciones:", err);
       } finally {
@@ -231,16 +237,19 @@ export default function MisCursosPage() {
                         variant="secondary"
                         className={`font-light ${
                           enrollment.status !== "in_progress" &&
-                          enrollment.status !== "done"
+                          enrollment.status !== "done" &&
+                          enrollment.status !== "passed"
                             ? "border border-red-500 text-red-700"
                             : ""
                         }`}
                       >
                         {enrollment.status === "in_progress"
                           ? "En curso"
-                          : enrollment.status === "done"
-                            ? "Completado"
-                            : "Desaprobado"}
+                          : enrollment.status === "passed"
+                            ? "Aprobado"
+                            : enrollment.status === "failed"
+                              ? "Desaprobado"
+                              : "none"}
                       </Badge>
                     </td>
                   </tr>
