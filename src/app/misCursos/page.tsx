@@ -27,11 +27,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import Link from "next/link";
+import Loader from "@/components/ui/loader";
 
 export default function MisCursosPage() {
   const [semestreSeleccionado, setSemestreSeleccionado] = useState<string>("");
   const [enrollments, setEnrollments] = useState<any[]>([]);
   const [historicEnrollments, sethistoricEnrollments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
@@ -39,9 +41,10 @@ export default function MisCursosPage() {
         const userId = 1;
         const data = await getEnrollmentsByUser(userId);
         setEnrollments(data as any[]);
-        console.log(data);
       } catch (err) {
         console.error("❌ Error al traer inscripciones:", err);
+      } finally {
+        setLoading(false);
       }
     }
 
@@ -61,22 +64,18 @@ export default function MisCursosPage() {
 
     fetchData();
   }, []);
-
-  const semestresPorAnio = {
-    "2024": ["1er semestre", "2do semestre"],
-    "2025": ["1er semestre", "2do semestre", "Verano"],
-    "2026": ["1er semestre"],
-  };
+  if (loading) return <Loader message="Cargando tus cursos..." />;
 
   const semestresUnicos = Array.from(
     new Set(historicEnrollments.map(e => `${e.year}-${e.semester}`))
   ).sort((a, b) => b.localeCompare(a)); // Orden descendente
 
-  const historialFiltrado = semestreSeleccionado
-    ? historicEnrollments.filter(
-        h => `${h.year}-${h.semester}` === semestreSeleccionado
-      )
-    : historicEnrollments;
+  const historialFiltrado =
+    semestreSeleccionado && semestreSeleccionado !== "all"
+      ? historicEnrollments.filter(
+          h => `${h.year}-${h.semester}` === semestreSeleccionado
+        )
+      : historicEnrollments;
 
   return (
     <main className=" w-full flex flex-col gap-8 bg-white">
@@ -104,7 +103,10 @@ export default function MisCursosPage() {
           <div className="pt-8 pl-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {enrollments.map(enrollment => (
               <Link
-                href={`/misCursos/${enrollment.course.id}`}
+                href={{
+                  pathname: `/misCursos/${enrollment.course.id}`,
+                  query: { commissionId: enrollment.commission.id },
+                }}
                 key={enrollment.course.id}
               >
                 <div className="cursor-pointer border rounded-xl bg-white space-y-1 hover:shadow-md transition-shadow duration-300">
@@ -119,8 +121,9 @@ export default function MisCursosPage() {
                   <div className="p-4 gap-4 pl-6">
                     <div className="flex flex-row gap-5 items-center pb-5">
                       <Clock size={20} color="#757575" />
-                      <span>{enrollment.commission.days} </span>
                       <span>
+                        {enrollment.commission.days}
+                        {"   "}
                         {enrollment.commission.startTime} -{" "}
                         {enrollment.commission.endTime}
                       </span>
@@ -131,6 +134,7 @@ export default function MisCursosPage() {
                     </div>
                     <div className="flex flex-row gap-5 items-center">
                       <MapPin size={20} color="#757575" />
+                      Aula {enrollment.commission.classroom}
                     </div>
                   </div>
                 </div>
@@ -140,21 +144,55 @@ export default function MisCursosPage() {
         </section>
 
         {/* Historial académico */}
+        {/* Historial académico */}
         <section className="pt-9">
           <div className="flex flex-row justify-between items-center pb-6">
             <h1 className="text-2xl font-medium">Historial Académico</h1>
-            <Select onValueChange={setSemestreSeleccionado}>
+            <Select
+              value={semestreSeleccionado}
+              onValueChange={setSemestreSeleccionado}
+            >
               <SelectTrigger className="w-[280px]">
                 <SelectValue placeholder="Todos los semestres" />
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  {semestresUnicos.map(semestre => (
-                    <SelectItem key={semestre} value={semestre}>
-                      {semestre}
-                    </SelectItem>
-                  ))}
+                  {/* Opción global "Todos los semestres" */}
+                  <SelectItem value="all">Todos los semestres</SelectItem>
                 </SelectGroup>
+
+                {/* ✅ Agrupar por año */}
+                {Object.entries(
+                  historicEnrollments.reduce(
+                    (acc: Record<string, string[]>, h) => {
+                      if (!acc[h.year]) acc[h.year] = [];
+                      if (!acc[h.year].includes(h.semester))
+                        acc[h.year].push(h.semester);
+                      return acc;
+                    },
+                    {}
+                  )
+                )
+                  .sort(([a], [b]) => b.localeCompare(a)) // orden descendente por año
+                  .map(([year, semestres]) => (
+                    <SelectGroup key={year}>
+                      <SelectLabel>{year}</SelectLabel>
+                      {semestres.map(sem => (
+                        <SelectItem
+                          key={`${year}-${sem}`}
+                          value={`${year}-${sem}`}
+                        >
+                          {sem === "I"
+                            ? "1er semestre"
+                            : sem === "II"
+                              ? "2do semestre"
+                              : sem === "Verano"
+                                ? "Verano"
+                                : sem}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  ))}
               </SelectContent>
             </Select>
           </div>
@@ -174,22 +212,33 @@ export default function MisCursosPage() {
                 </tr>
               </thead>
               <tbody>
-                {historicEnrollments.map(enrollment => (
+                {/* ✅ Usa historialFiltrado para aplicar el filtro o mostrar todo */}
+                {historialFiltrado.map(enrollment => (
                   <tr
                     key={enrollment.id}
                     className="border-l border-r border-b"
                   >
                     <td className="p-2">{enrollment.course.name}</td>
-                    <td className="p-2">{enrollment.semester}</td>
+                    <td className="p-2">
+                      {enrollment.year}-{enrollment.semester}
+                    </td>
                     <td className="p-2">
                       {enrollment.commission.professorName}
                     </td>
-                    <td className="p-2">{enrollment.course.finalnote}</td>
+                    <td className="p-2">{enrollment.finalNote}</td>
                     <td className="p-2">
-                      <Badge variant="secondary" className="font-light">
+                      <Badge
+                        variant="secondary"
+                        className={`font-light ${
+                          enrollment.status !== "in_progress" &&
+                          enrollment.status !== "done"
+                            ? "border border-red-500 text-red-700"
+                            : ""
+                        }`}
+                      >
                         {enrollment.status === "in_progress"
                           ? "En curso"
-                          : enrollment.status === "completed"
+                          : enrollment.status === "done"
                             ? "Completado"
                             : "Desaprobado"}
                       </Badge>

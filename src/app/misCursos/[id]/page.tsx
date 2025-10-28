@@ -1,5 +1,17 @@
-// src/app/misCursos/[id]/page.tsx
 "use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useParams, useSearchParams } from "next/navigation";
+import {
+  PanelLeft,
+  FolderOpen,
+  UserCheck,
+  Check,
+  X,
+  Loader2,
+  CombineIcon,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import {
@@ -20,32 +32,87 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import Loader from "@/components/ui/loader";
 
 import { Button } from "@/components/ui/button";
-import { PanelLeft, FolderOpen, UserCheck, Check, X } from "lucide-react";
-import { use, useState } from "react";
-import Link from "next/link";
+import {
+  getEnrollmentDetailsByid,
+  getAtendencessByUserID,
+  deleteEnrollmentById,
+} from "@/lib/api/enrollments";
 
-interface CursoPageProps {
-  params: Promise<{ id: string }>;
-}
+export default function CursoDetallePage() {
+  const params = useParams();
+  const searchParams = useSearchParams();
 
-export default function CursoPage({ params }: CursoPageProps) {
-  const { id } = use(params); // ✅ Desempaquetás el Promise con use()
+  const courseId = params.id;
+  const commissionId = searchParams.get("commissionId");
+
+  const [courseDetails, setCourseDetails] = useState<any>(null);
+  const [attendances, setAttendances] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [popUpBaja, setPopUpBaja] = useState(false);
   const [bajaConfirmada, setBajaConfirmada] = useState(false);
 
-  const deBajaPopUp = () => {
-    setPopUpBaja(true);
-  };
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        if (!commissionId) return;
+        setLoading(true); // 🔹 empezamos a cargar
+
+        const [courseData, attendanceData] = await Promise.all([
+          getEnrollmentDetailsByid(Number(commissionId)),
+          getAtendencessByUserID(Number(commissionId)),
+        ]);
+
+        setCourseDetails(courseData);
+        setAttendances(attendanceData);
+      } catch (err) {
+        console.error("❌ Error al traer datos del curso:", err);
+      } finally {
+        setLoading(false); // 🔹 apagamos el loader SIEMPRE
+      }
+    }
+
+    fetchData();
+  }, [commissionId]);
+
+  async function handleCourseDelete() {
+    try {
+      await deleteEnrollmentById(courseId, commissionId);
+
+      setPopUpBaja(false);
+      setBajaConfirmada(true);
+
+      console.log("✅ Curso dado de baja correctamente");
+    } catch (error) {
+      console.error("❌ Error al dar de baja:", error);
+      alert("Ocurrió un error al intentar darte de baja del curso.");
+    }
+  }
+
+  if (loading) {
+    return <Loader message="Cargando detalles del curso..." />;
+  }
+
+  if (!courseDetails) {
+    return (
+      <main className="flex flex-col items-center justify-center h-screen">
+        <p className="text-gray-600">No se encontraron detalles del curso.</p>
+        <Link href="/misCursos">
+          <Button className="mt-4">Volver a Mis Cursos</Button>
+        </Link>
+      </main>
+    );
+  }
 
   return (
     <main className="w-full flex flex-col gap-8 bg-white">
-      <div className="pt-9.5 pb-9.5 pl-8 flex gap-4 items-center space-x-2 text-sm text-muted-foreground border-b h-[53px]">
-        <PanelLeft size={15}></PanelLeft>
+      {/* Header y Breadcrumb */}
+      <div className="pt-9.5 pb-9.5 pl-8 flex gap-4 items-center border-b h-[53px] text-sm text-muted-foreground">
+        <PanelLeft size={15} />
         <span className="text-muted-foreground">|</span>
 
         <Breadcrumb>
@@ -58,18 +125,22 @@ export default function CursoPage({ params }: CursoPageProps) {
               <BreadcrumbLink href="/misCursos">Mis Cursos</BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
-
             <BreadcrumbItem>
-              <BreadcrumbPage>Curso</BreadcrumbPage>
+              <BreadcrumbPage>
+                {courseDetails?.course?.name || "Cargando..."}
+              </BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
       </div>
-      <div className="pl-8 pr-8">
-        <div className="flex flex-row justify-between items-center pb-6 pt-4">
-          <h1 className="text-2xl font-medium">Nombre del curso</h1>
 
-          {/* Botón para dar de baja */}
+      <div className="pl-8 pr-8">
+        {/* Header */}
+        <div className="flex flex-row justify-between items-center pb-6 pt-4">
+          <h1 className="text-2xl font-medium">
+            {courseDetails?.course?.name}
+          </h1>
+
           <Badge
             variant="deBaja"
             className="font-light pr-6 pl-6 hover:cursor-pointer shadow-md transition-shadow duration-300"
@@ -79,29 +150,27 @@ export default function CursoPage({ params }: CursoPageProps) {
           </Badge>
         </div>
 
-        {/* AlertDialog Confirmación */}
+        {/* Popups */}
         <AlertDialog open={popUpBaja} onOpenChange={setPopUpBaja}>
-          <AlertDialogContent className="text-center w-[500px] justify-center">
+          <AlertDialogContent className="text-center w-[500px]">
             <AlertDialogHeader>
-              <AlertDialogTitle className="text-center">
+              <AlertDialogTitle>
                 ¿Seguro que quieres darte de baja de este curso?
               </AlertDialogTitle>
-              <AlertDialogDescription className="text-center">
+              <AlertDialogDescription>
                 Esta acción no se puede revertir. El último mes cursado debe ser
                 abonado.
               </AlertDialogDescription>
             </AlertDialogHeader>
-            <AlertDialogFooter className="flex justify-center  space-x-4">
-              <AlertDialogCancel
-                onClick={() => setPopUpBaja(false)}
-                className="mr-4 justify-center"
-              >
+            <AlertDialogFooter className="justify-center space-x-4">
+              <AlertDialogCancel onClick={() => setPopUpBaja(false)}>
                 Cancelar
               </AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => {
                   setPopUpBaja(false);
                   setBajaConfirmada(true);
+                  handleCourseDelete();
                 }}
               >
                 Confirmar baja
@@ -110,34 +179,28 @@ export default function CursoPage({ params }: CursoPageProps) {
           </AlertDialogContent>
         </AlertDialog>
 
-        {/* AlertDialog Baja confirmada */}
         <AlertDialog open={bajaConfirmada} onOpenChange={setBajaConfirmada}>
           <AlertDialogContent className="text-center w-[500px]">
             <AlertDialogHeader>
-              <div className="jutify-end">
+              <div className="flex justify-end">
                 <Link
-                  href={"/misCursos"}
+                  href="/misCursos"
                   onClick={() => setBajaConfirmada(false)}
-                  className="justify-end"
                 >
-                  <X color={"black"} className="justify-end">
-                    {" "}
-                  </X>
+                  <X color="black" />
                 </Link>
               </div>
-
-              <AlertDialogTitle className="text-center">
-                Baja confirmada
-              </AlertDialogTitle>
-              <AlertDialogDescription className="text-center">
+              <AlertDialogTitle>Baja confirmada</AlertDialogTitle>
+              <AlertDialogDescription>
                 El curso ya no se encuentra en tus inscripciones.
               </AlertDialogDescription>
             </AlertDialogHeader>
-            <AlertDialogFooter className="justify-center"></AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-        <div className="flex flex-row items-start gap-6">
-          {/* INFORMACIÓN GENERAL */}
+
+        {/* Información general + Asistencias */}
+        <div className="flex flex-row pl-4 items-start gap-6">
+          {/* Información general */}
           <div className="border rounded-xl bg-white w-[370px] mr-8 flex flex-col">
             <div className="flex items-center p-4 pr-6 rounded-t-xl bg-[#6F97F0]">
               <FolderOpen size={18} />
@@ -145,59 +208,86 @@ export default function CursoPage({ params }: CursoPageProps) {
                 Información general
               </span>
             </div>
+
             <div className="flex justify-between items-center p-4 pb-2 pr-6">
               <span className="text-sm text-[#8C8C8C] font-light">
                 Profesor:
               </span>
-              <span className="text-sm">Nombre Profesor</span>
+              <span className="text-sm">
+                {courseDetails?.commission?.professorName || "—"}
+              </span>
             </div>
+
             <div className="flex justify-between items-center p-4 pb-2 pr-6">
               <span className="text-sm text-[#8C8C8C] font-light">
                 Horario:
               </span>
-              <span className="text-sm">Lun 16:00–18:00</span>
+              <span className="text-sm">
+                {courseDetails?.commission?.days || "—"}{" "}
+                {courseDetails?.commission?.startTime
+                  ? `${courseDetails.commission.startTime}–${courseDetails.commission.endTime}`
+                  : ""}
+              </span>
             </div>
+
             <div className="flex justify-between items-center p-4 pb-5 pr-6">
               <span className="text-sm text-[#8C8C8C] font-light">Aula:</span>
-              <span className="text-sm">3003</span>
+              <span className="text-sm">
+                {courseDetails?.commission?.classroom || "—"}
+              </span>
             </div>
           </div>
 
-          {/* ASISTENCIAS */}
+          {/* Resumen de Asistencias */}
           <div className="border rounded-xl bg-white w-[370px] flex flex-col">
             <div className="flex items-center p-4 pr-6 rounded-t-xl bg-[#6F97F0]">
               <UserCheck size={18} />
               <span className="pl-5 text-base font-medium">Asistencias</span>
             </div>
+
             <div className="flex justify-between items-center p-4 pb-2 pr-6">
               <span className="text-sm text-[#8C8C8C] font-light">
                 Total de clases:
               </span>
-              <span className="text-sm">24</span>
+              <span className="text-sm">{attendances.length}</span>
             </div>
+
             <div className="flex justify-between items-center p-4 pb-2 pr-6">
               <span className="text-sm text-[#8C8C8C] font-light">
                 Asistencias:
               </span>
-              <span className="text-sm">5</span>
+              <span className="text-sm">
+                {attendances.filter(a => a.present).length}
+              </span>
             </div>
+
             <div className="flex justify-between items-center p-4 pb-5 pr-6 border-b">
               <span className="text-sm text-[#8C8C8C] font-light">Faltas:</span>
-              <span className="text-sm">1</span>
+              <span className="text-sm">
+                {attendances.filter(a => !a.present).length}
+              </span>
             </div>
+
             <div className="flex justify-between items-center p-4 pb-5 pr-6">
               <span className="text-sm text-[#8C8C8C] font-light">
                 Porcentaje:
               </span>
-              <span className="text-sm">83%</span>
+              <span className="text-sm">
+                {attendances.length > 0
+                  ? `${Math.round(
+                      (attendances.filter(a => a.present).length /
+                        attendances.length) *
+                        100
+                    )}%`
+                  : "—"}
+              </span>
             </div>
           </div>
         </div>
 
-        {/* Clasificaciones */}
-
+        {/* 🧾 Clasificaciones */}
         <div className="overflow-auto pl-4 pt-12">
-          <h1 className="text-xl font-medium pb-5">Clasificaciones</h1>
+          <h1 className="text-xl font-medium pb-5">Calificaciones</h1>
 
           <table className="w-full border-collapse text-sm text-left rounded-md overflow-hidden pr-6 ">
             <thead className="bg-gray-100">
@@ -226,10 +316,21 @@ export default function CursoPage({ params }: CursoPageProps) {
                 </td>
               </tr>
               <tr className="border-l border-r border-b">
-                <td className="p-2 pl-8">Primer Parcial</td>
-                <td className="p-2">15 Feb 2025</td>
+                <td className="p-2 pl-8">Segundo Parcial</td>
+                <td className="p-2">20 Abr 2025</td>
                 <td className="p-2">30%</td>
-                <td className="p-2">8.5</td>
+                <td className="p-2">9.0</td>
+                <td className="p-2">
+                  <Badge variant="secondary" className="font-light">
+                    Aprobado
+                  </Badge>
+                </td>
+              </tr>
+              <tr className="border-l border-r border-b">
+                <td className="p-2 pl-8">TP Final</td>
+                <td className="p-2">30 Jun 2025</td>
+                <td className="p-2">40%</td>
+                <td className="p-2">9.5</td>
                 <td className="p-2">
                   <Badge variant="secondary" className="font-light">
                     Aprobado
@@ -240,30 +341,49 @@ export default function CursoPage({ params }: CursoPageProps) {
           </table>
         </div>
 
-        {/* Asistencias */}
-
+        {/* 🗓️ Asistencias Detalladas */}
         <div className="overflow-auto pl-4 pt-12">
           <h1 className="text-xl font-medium pb-5">Asistencias</h1>
 
           <div className="grid auto-cols-max grid-flow-col gap-5 pl-4">
-            <div className="bg-gray-100 w-[290px] h-[90px] flex flex-row justify-between p-2 rounded-lg">
-              <div className="flex flex-col justify-between p-4 gap-1  pr-6">
-                <span className="text-sm">Lun 03 Feb</span>
-                <span className="text-sm">16:00</span>
+            {attendances.length === 0 ? (
+              <div className="text-sm text-gray-500 italic py-6">
+                No hay asistencias registradas aún.
               </div>
-              <div className="pr-4  justify-center items-center flex">
-                <Check size={30} color={"#6D9C66"}></Check>
-              </div>
-            </div>
-            <div className="bg-gray-100 w-[290px] h-[90px] flex flex-row justify-between p-2 rounded-lg">
-              <div className="flex flex-col justify-between p-4 gap-1  pr-6">
-                <span className="text-sm">Lun 03 Feb</span>
-                <span className="text-sm">16:00</span>
-              </div>
-              <div className="pr-4  justify-center items-center flex">
-                <Check size={30} color={"#6D9C66"}></Check>
-              </div>
-            </div>{" "}
+            ) : (
+              attendances.map(attendance => {
+                const fecha = new Date(attendance.date);
+                const dia = fecha.toLocaleDateString("es-ES", {
+                  weekday: "short",
+                  day: "2-digit",
+                  month: "short",
+                });
+                const hora = fecha.toLocaleTimeString("es-ES", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                });
+
+                return (
+                  <div
+                    key={attendance.id}
+                    className="bg-gray-100 w-[290px] h-[90px] flex flex-row justify-between p-2 rounded-lg"
+                  >
+                    <div className="flex flex-col justify-between p-4 gap-1 pr-6">
+                      <span className="text-sm">{dia}</span>
+                      <span className="text-sm">{hora}</span>
+                    </div>
+
+                    <div className="pr-4 justify-center items-center flex">
+                      {attendance.present ? (
+                        <Check size={30} color="#6D9C66" />
+                      ) : (
+                        <X size={30} color="#D9534F" />
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
       </div>

@@ -11,12 +11,13 @@ import {
 } from "@/components/ui/breadcrumb";
 
 import { PanelLeft, FunnelPlus, Circle, X } from "lucide-react";
-import { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 
 import {
   Select,
   SelectContent,
+  SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -33,8 +34,11 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
+import { getAvailableCoursesByUserId } from "@/lib/api/enrollments";
+
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import Loader from "@/components/ui/loader";
 
 const mockCursos = [
   {
@@ -63,11 +67,49 @@ const mockCursos = [
 
 export default function InscripcionesPage() {
   const [selectedCurso, setSelectedCurso] = useState<string | null>(null);
+  const [availableCourses, setAvailableCourses] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [insConfirmada, setinsConfirmada] = useState(false);
+  const [selectedCourseFilter, setSelectedCourseFilter] =
+    useState<string>("todas");
+  const [filteredCourses, setFilteredCourses] = useState<any[]>([]);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        setLoading(true);
+        const data = await getAvailableCoursesByUserId();
+        setAvailableCourses(data || []);
+      } catch (err) {
+        console.error("❌ Error al traer datos del curso:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, []);
+
+  const handleFilterChange = (value: string) => {
+    setSelectedCourseFilter(value);
+
+    if (value === "todas") {
+      setFilteredCourses(availableCourses); // ✅ reset
+    } else {
+      const filtered = availableCourses.filter(
+        course => String(course.id) === value
+      );
+      setFilteredCourses(filtered);
+    }
+  };
+
+  // ✅ Loader va después del useEffect
+  if (loading) {
+    return <Loader message="Cargando inscripciones..." />;
+  }
 
   const handleCursoClick = (id: string) => {
     setSelectedCurso(id === selectedCurso ? null : id);
   };
-  const [insConfirmada, setinsConfirmada] = useState(false);
 
   return (
     <main className="w-full flex flex-col gap-8 bg-white">
@@ -106,15 +148,30 @@ export default function InscripcionesPage() {
               </div>
 
               <div className="flex flex-col pr-3">
-                <span className="text-sm p-2">Semestre</span>
-                <Select>
-                  <SelectTrigger className="w-full shadow-none ml-2 mr-10 text-xs text-black-500">
-                    <SelectValue
-                      className="text-xs text-light"
-                      placeholder="Todos los semestres"
-                    />
+                <span className="text-sm p-2">Materias</span>
+                <Select
+                  value={selectedCourseFilter}
+                  onValueChange={handleFilterChange}
+                >
+                  <SelectTrigger className="w-full shadow-none text-sm text-black">
+                    <SelectValue placeholder="Seleccionar materia" />
                   </SelectTrigger>
-                  <SelectContent />
+
+                  <SelectContent>
+                    <SelectItem value="todas">Todas las materias</SelectItem>
+
+                    {availableCourses.length > 0 ? (
+                      availableCourses.map(course => (
+                        <SelectItem key={course.id} value={String(course.id)}>
+                          {course.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="none" disabled>
+                        No hay materias disponibles
+                      </SelectItem>
+                    )}
+                  </SelectContent>
                 </Select>
               </div>
 
