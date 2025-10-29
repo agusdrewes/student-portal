@@ -301,9 +301,7 @@ export default function CursoDetallePage() {
                 <th className="p-2 pl-8 font-normal text-[#595959]">
                   Evaluación
                 </th>
-                <th className="p-2 font-normal text-[#595959]">
-                  Clasificación
-                </th>
+                <th className="p-2 font-normal text-[#595959]">Calificación</th>
                 <th className="p-2 font-normal text-[#595959]">Estado</th>
               </tr>
             </thead>

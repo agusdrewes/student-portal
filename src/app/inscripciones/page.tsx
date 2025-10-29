@@ -9,11 +9,9 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-
-import { PanelLeft, FunnelPlus, Circle, X } from "lucide-react";
+import { PanelLeft, FunnelPlus, X } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-
 import {
   Select,
   SelectContent,
@@ -21,53 +19,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
 import {
   AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-
-import { getAvailableCoursesByUserId } from "@/lib/api/enrollments";
-
+import {
+  getAvailableCoursesByUserId,
+  enrollUserInCourseIdAndCommissionId,
+} from "@/lib/api/enrollments";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
 import Loader from "@/components/ui/loader";
 
-const mockCursos = [
-  {
-    id: "1",
-    nombre: "Programación I",
-    codigo: "2530",
-    prerrequisitos: "Inicio en algoritmos",
-    horario: "Martes 13:30 - 18:30",
-    clase: "2327",
-    modalidad: "Virtual",
-    cupos: "15/30",
-    disponible: true,
-  },
-  {
-    id: "2",
-    nombre: "Programación I",
-    codigo: "2530",
-    prerrequisitos: "Inicio en algoritmos",
-    horario: "Martes 13:30 - 18:30",
-    clase: "2327",
-    modalidad: "Virtual",
-    cupos: "0/30",
-    disponible: false,
-  },
-];
-
 export default function InscripcionesPage() {
-  const [selectedCurso, setSelectedCurso] = useState<string | null>(null);
-  const [availableCourses, setAvailableCourses] = useState<any>(null);
+  const [selectedCommissions, setSelectedCommissions] = useState<
+    Record<string, string>
+  >({});
+  const [availableCourses, setAvailableCourses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [insConfirmada, setinsConfirmada] = useState(false);
   const [selectedCourseFilter, setSelectedCourseFilter] =
@@ -80,6 +51,7 @@ export default function InscripcionesPage() {
         setLoading(true);
         const data = await getAvailableCoursesByUserId();
         setAvailableCourses(data || []);
+        setFilteredCourses(data || []);
       } catch (err) {
         console.error("❌ Error al traer datos del curso:", err);
       } finally {
@@ -91,9 +63,8 @@ export default function InscripcionesPage() {
 
   const handleFilterChange = (value: string) => {
     setSelectedCourseFilter(value);
-
     if (value === "todas") {
-      setFilteredCourses(availableCourses); // ✅ reset
+      setFilteredCourses(availableCourses);
     } else {
       const filtered = availableCourses.filter(
         course => String(course.id) === value
@@ -102,21 +73,55 @@ export default function InscripcionesPage() {
     }
   };
 
-  // ✅ Loader va después del useEffect
-  if (loading) {
-    return <Loader message="Cargando inscripciones..." />;
-  }
-
-  const handleCursoClick = (id: string) => {
-    setSelectedCurso(id === selectedCurso ? null : id);
+  const handleCursoClick = (courseId: string, commissionId: string) => {
+    setSelectedCommissions(prev => ({
+      ...prev,
+      [courseId]: prev[courseId] === commissionId ? "" : commissionId, // toggle
+    }));
   };
+
+  const enrollInCourse = async () => {
+    try {
+      const selectedEntries = Object.entries(selectedCommissions).filter(
+        ([_, val]) => val
+      );
+      async function fetchData() {
+        try {
+          for (const [courseId, commissionId] of selectedEntries) {
+            await enrollUserInCourseIdAndCommissionId(
+              Number(courseId),
+              Number(commissionId)
+            );
+            console.log(
+              `✅ Inscripción creada: curso ${courseId}, comisión ${commissionId}`
+            );
+          }
+        } catch (err) {
+          console.error("❌ Error al traer datos del curso:", err);
+        } finally {
+          setLoading(false);
+        }
+      }
+      fetchData();
+      setinsConfirmada(true);
+    } catch (err: any) {
+      console.error("❌ Error al inscribirse:", err.message);
+      alert(`Error: ${err.message}`);
+    }
+  };
+
+  if (loading) return <Loader message="Cargando inscripciones..." />;
+
+  // Calcular cuántas materias fueron seleccionadas
+  const totalSeleccionadas =
+    Object.values(selectedCommissions).filter(Boolean).length;
 
   return (
     <main className="w-full flex flex-col gap-8 bg-white">
-      {/* BREADCRUMB */}
-      <div className="pt-9.5 pb-9.5 pl-8 flex gap-4 items-center space-x-2 text-sm text-muted-foreground border-b h-[53px]">
+      {/* === Breadcrumb === */}
+      <div className="pt-9.5 pb-9.5 pl-8 flex gap-4 items-center border-b h-[53px] text-sm text-muted-foreground">
         <PanelLeft size={15} />
-        <span className="text-muted-foreground">|</span>
+        <span>|</span>
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
@@ -130,17 +135,16 @@ export default function InscripcionesPage() {
         </Breadcrumb>
       </div>
 
-      {/* CONTENIDO */}
+      {/* === Contenido === */}
       <div className="pl-8 pr-8">
         <h1 className="text-2xl font-medium pb-3">Inscripción Materias</h1>
-        <span className="text-sm font-base text-[#737373]">
+        <span className="text-sm text-[#737373]">
           Selecciona las materias y cursos para el período
         </span>
 
-        <div className="grid grid-cols-3 gap-5 justify-between pt-5">
-          {/* FILTROS + RESUMEN */}
+        <div className="grid grid-cols-3 gap-5 pt-5">
+          {/* === Filtros === */}
           <div>
-            {/* FILTROS */}
             <div className="border rounded-xl p-4">
               <div className="flex flex-row gap-2 items-center p-2">
                 <FunnelPlus size={16} />
@@ -156,10 +160,8 @@ export default function InscripcionesPage() {
                   <SelectTrigger className="w-full shadow-none text-sm text-black">
                     <SelectValue placeholder="Seleccionar materia" />
                   </SelectTrigger>
-
                   <SelectContent>
                     <SelectItem value="todas">Todas las materias</SelectItem>
-
                     {availableCourses.length > 0 ? (
                       availableCourses.map(course => (
                         <SelectItem key={course.id} value={String(course.id)}>
@@ -174,49 +176,40 @@ export default function InscripcionesPage() {
                   </SelectContent>
                 </Select>
               </div>
-
-              <div className="flex flex-col pr-3 mt-4">
-                <span className="text-sm p-2">Turno</span>
-                <Select>
-                  <SelectTrigger className="w-full shadow-none ml-2 text-xs text-black-500">
-                    <SelectValue
-                      className="text-xs text-light"
-                      placeholder="Todos los turnos"
-                    />
-                  </SelectTrigger>
-                  <SelectContent />
-                </Select>
-              </div>
             </div>
 
-            {/* RESUMEN DE INSCRIPCIÓN */}
+            {/* === Resumen === */}
             <div className="border rounded-xl p-5 mt-5">
               <span className="font-bold">Resumen de inscripción</span>
-              <div className="flex flex-row justify-between mt-6">
+              <div className="flex justify-between mt-6">
                 <span className="text-sm font-light">
                   Materias seleccionadas
                 </span>
-                <span className="text-sm font-light">
-                  {selectedCurso ? 1 : 0}
-                </span>
+                <span className="text-sm font-light">{totalSeleccionadas}</span>
               </div>
-              <div className="flex flex-row justify-between mt-6">
+              <div className="flex justify-between mt-6">
                 <span className="text-sm font-light">Total compra</span>
                 <span className="text-sm font-light">
-                  {selectedCurso ? "320.000$" : "-"}
+                  {totalSeleccionadas > 0
+                    ? `${totalSeleccionadas * 320000}$`
+                    : "-"}
                 </span>
               </div>
               <button
-                disabled={!selectedCurso}
-                className="text-base font-light text-white justify-center bg-[#6F97F0] w-full mt-5 mb-5 p-2 rounded-sm disabled:opacity-50"
-                onClick={() => setinsConfirmada(true)}
+                disabled={totalSeleccionadas === 0}
+                className="text-base font-light text-white bg-[#6F97F0] w-full mt-5 p-2 rounded-sm disabled:opacity-50"
+                onClick={() => {
+                  setinsConfirmada(true);
+                  enrollInCourse();
+                  console.log(selectedCommissions);
+                }}
               >
                 Confirmar inscripción
               </button>
             </div>
           </div>
 
-          {/* CURSOS DISPONIBLES */}
+          {/* === Cursos disponibles === */}
           <div className="border rounded-xl ml-4 col-span-2">
             <div className="p-8 pb-2 border-b">
               <h2 className="text-lg font-light">Materias Disponibles</h2>
@@ -225,98 +218,116 @@ export default function InscripcionesPage() {
               </h3>
             </div>
 
-            {mockCursos.map(curso => (
-              <div
-                key={curso.id}
-                className={`border-b  ${
-                  !curso.disponible
-                    ? "opacity-40 cursor-not-allowed"
-                    : "cursor-pointer"
-                }`}
-                onClick={() => curso.disponible && handleCursoClick(curso.id)}
-              >
-                <div className="flex flex-row justify-between p-8 pb-0">
-                  <span className="text-base font-light">{curso.nombre}</span>
-                  <Badge variant="secondary" className="pl-3 pr-3">
-                    {curso.disponible ? "Disponible" : "Sin cupos"}
-                  </Badge>
-                </div>
+            {filteredCourses.map(curso => {
+              const commissions = Array.isArray(curso.commissions)
+                ? curso.commissions
+                : [];
+              const hasOpenCommission = commissions.some(
+                (com: any) => Number(com.availableSpots) > 0
+              );
 
-                <span className="font-light text-sm p-8 pt-3 block">
-                  Código: {curso.codigo} - Prerrequisitos:{" "}
-                  {curso.prerrequisitos}
-                </span>
-
+              return (
                 <div
-                  className={` items-center gap-4 border rounded-xl ml-6 mr-6 p-4 pl-8 mb-5 ${
-                    selectedCurso === curso.id ? "border-[#6F97F0]" : ""
+                  key={curso.id}
+                  className={`border-b ${
+                    hasOpenCommission
+                      ? "cursor-pointer"
+                      : "opacity-40 pointer-events-none"
                   }`}
                 >
-                  <RadioGroup
-                    value={selectedCurso || ""}
-                    onValueChange={val => handleCursoClick(val)}
-                  >
-                    <div
-                      key={curso.id}
-                      className={` ${
-                        !curso.disponible
-                          ? "opacity-40 cursor-not-allowed"
-                          : "cursor-pointer"
-                      }`}
-                    >
-                      <div
-                        className={`grid grid-cols-[auto_1fr_auto] items-center gap-4 p-2 pl-4  ${
-                          selectedCurso === curso.id ? "border-[#6F97F0] " : ""
-                        }`}
+                  <div className="flex flex-row justify-between pl-8 pr-8 pt-8 pb-0">
+                    <span className="text-base font-light">{curso.name}</span>
+                    <Badge variant="secondary">
+                      {hasOpenCommission ? "Disponible" : "Sin cupos"}
+                    </Badge>
+                  </div>
+
+                  <span className="font-light text-sm p-8 pt-3 block">
+                    Código: {curso.code}{" "}
+                    {curso.correlates?.length
+                      ? `- Correlativas: ${curso.correlates.join(", ")}`
+                      : "- Correlativas: Ninguna"}
+                  </span>
+
+                  {commissions.length > 0 && (
+                    <div className="items-center gap-4 ml-6 mr-6 p-4 pl-8 mb-5">
+                      <RadioGroup
+                        value={selectedCommissions[curso.id] || ""}
+                        onValueChange={val =>
+                          handleCursoClick(curso.id.toString(), val)
+                        }
                       >
-                        <RadioGroupItem
-                          value={curso.id}
-                          disabled={!curso.disponible}
-                          className="mt-1"
-                        />
+                        {commissions.map((com: any) => {
+                          const isFull = Number(com.availableSpots) === 0;
+                          const isSelected =
+                            selectedCommissions[curso.id] === com.id.toString();
 
-                        <div className="flex flex-col text-sm gap-1">
-                          <span className="font-base">{curso.horario}</span>
-                          <span className="text-[#737373]">
-                            Clase: {curso.clase}
-                          </span>
-                          <span className="text-[#737373]">
-                            Modalidad: {curso.modalidad}
-                          </span>
-                        </div>
+                          return (
+                            <div
+                              key={com.id}
+                              onClick={e => {
+                                if (isFull) return;
+                                e.stopPropagation();
+                                handleCursoClick(
+                                  curso.id.toString(),
+                                  com.id.toString()
+                                );
+                              }}
+                              className={`border rounded-xl pl-3 pr-3 mb-2 ${
+                                isSelected ? "border-[#6F97F0]" : ""
+                              } ${isFull ? "opacity-40 pointer-events-none" : "cursor-pointer"}`}
+                            >
+                              <div className="grid grid-cols-[auto_1fr_auto] items-center gap-4 p-2 pl-4">
+                                <RadioGroupItem
+                                  value={com.id.toString()}
+                                  disabled={isFull}
+                                  className="mt-1"
+                                />
 
-                        <div className="text-sm text-right text-[#737373] pr-6">
-                          {curso.cupos} cupos
-                        </div>
-                      </div>
+                                <div className="flex flex-col text-sm gap-1">
+                                  <span className="font-base">
+                                    {com.days} ({com.startTime} - {com.endTime})
+                                  </span>
+                                  <span className="text-[#737373]">
+                                    Clase: {com.classRoom}
+                                  </span>
+                                  <span className="text-[#737373]">
+                                    Modalidad: {com.mode}
+                                  </span>
+                                </div>
+
+                                <div className="text-sm text-right text-[#737373] pr-6">
+                                  {com.availableSpots}/{com.totalSpots} cupos
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </RadioGroup>
                     </div>
-                  </RadioGroup>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
+
+        {/* === Modal confirmación === */}
         <AlertDialog open={insConfirmada} onOpenChange={setinsConfirmada}>
           <AlertDialogContent className="text-center w-[500px]">
             <AlertDialogHeader>
-              <div className="jutify-start">
+              <div className="justify-start">
                 <Link
                   href={"/misCursos"}
                   onClick={() => setinsConfirmada(false)}
-                  className="justify-start"
                 >
-                  <X color={"black"} className="justify-start">
-                    {" "}
-                  </X>
+                  <X color={"black"} />
                 </Link>
               </div>
-
-              <AlertDialogTitle className="text-center">
-                Inscripción confirmada{" "}
-              </AlertDialogTitle>
-              <AlertDialogDescription className="text-center">
-                Tus inscripciones a las materias en el periodo lectivo fueron
-                confirmadas. Verás el resumen en la tienda.
+              <AlertDialogTitle>Inscripción confirmada</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tus inscripciones fueron confirmadas. Verás el resumen en la
+                tienda.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="justify-center"></AlertDialogFooter>

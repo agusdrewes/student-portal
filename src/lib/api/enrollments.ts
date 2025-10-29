@@ -24,7 +24,7 @@ export async function deleteEnrollmentById(
   courseid: number,
   comissionid: number
 ) {
-  return apiFetch(`/enrollments/${courseid}/commissions/${courseid}`, {
+  return apiFetch(`/enrollments/${courseid}/commissions/${comissionid}`, {
     method: "DELETE",
     headers: {
       "Content-Type": "application/json",
@@ -39,4 +39,17 @@ export async function getAvailableCoursesByUserId() {
 
 export async function getCoursesGradesByCommissionID(commissionId: number) {
   return apiFetch(`/grades/user/${userId}/commission/${commissionId}`);
+}
+
+export async function enrollUserInCourseIdAndCommissionId(
+  courseId: number,
+  commissionId: number
+) {
+  return apiFetch(`/enrollments/${courseId}/commissions/${commissionId}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ userId }),
+  });
 }
