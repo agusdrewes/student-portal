@@ -1,8 +1,11 @@
 "use client";
-// CAMBIO: Importamos useEffect y useRouter
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { PanelLeft, WalletMinimal, X } from "lucide-react";
+
+import { getSaldo, cargarSaldo } from "@/lib/api/tienda";
+// Asumimos que types.ts sigue en /lib/api/
+// import { Saldo } from "@/lib/api/types";
 
 import {
   Breadcrumb,
@@ -30,16 +33,12 @@ export default function CargaSaldoPage() {
     null
   );
   const [saldoConfirmado, setSaldoConfirmado] = useState(false);
-
-  // CAMBIO: Nuevos estados para manejar el saldo y el formulario
   const [saldoActual, setSaldoActual] = useState<number | null>(null);
   const [montoManual, setMontoManual] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
 
   const router = useRouter();
-  const userId = 1; // Usamos el ID de usuario de prueba
 
-  // CAMBIO: Función para formatear moneda
   const formatCurrency = (amount: number) => {
     return amount.toLocaleString("es-AR", {
       style: "currency",
@@ -48,43 +47,33 @@ export default function CargaSaldoPage() {
     });
   };
 
-  // CAMBIO: useEffect para traer el saldo actual al cargar la página
   useEffect(() => {
     const fetchSaldo = async () => {
       setIsLoading(true);
       try {
-        const response = await fetch(
-          `http://localhost:3001/account/${userId}/balance`
-        );
-        if (response.ok) {
-          const data = await response.json();
-          setSaldoActual(data.balance);
-        } else {
-          console.error("No se pudo obtener el saldo:", response.status);
-          setSaldoActual(0); // Valor por defecto si falla
-        }
-      } catch (error) {
-        console.error("Error de red al obtener saldo:", error);
+        const data = await getSaldo(); // data.balance ya es un número
+        // CAMBIO 1: Usamos el número directamente
+        setSaldoActual(data.balance);
+      } catch (error: any) {
+        console.error("No se pudo obtener el saldo:", error.message);
         setSaldoActual(0);
       }
       setIsLoading(false);
     };
 
     fetchSaldo();
-  }, [userId]);
+  }, []);
 
-  // CAMBIO: Funciones para manejar la selección de montos
   const handleMontoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setMontoManual(e.target.value);
-    setSelectedAmount(null); // Deseleccionar botones si escribe a mano
+    setSelectedAmount(null);
   };
 
   const handleSelectMonto = (amount: number) => {
     setSelectedAmount(amount);
-    setMontoManual(String(amount)); // Actualizar el input
+    setMontoManual(String(amount));
   };
 
-  // CAMBIO: Función que se llama al confirmar el depósito
   const handleCargarSaldo = async () => {
     const amount = parseFloat(montoManual);
     if (isNaN(amount) || amount <= 0) {
@@ -93,34 +82,19 @@ export default function CargaSaldoPage() {
     }
 
     try {
-      const response = await fetch(
-        `http://localhost:3001/account/${userId}/deposit`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          // Asumimos que el backend espera un DTO con { "amount": number }
-          body: JSON.stringify({ amount: amount }),
-        }
-      );
-
-      if (response.ok) {
-        // Si el backend confirma, mostramos el popup de éxito
-        setSaldoConfirmado(true);
-      } else {
-        const errorData = await response.json();
-        alert(`Error al cargar el saldo: ${errorData.message}`);
-      }
-    } catch (error) {
-      console.error("Error de red al cargar saldo:", error);
-      alert("Error de conexión. No se pudo cargar el saldo.");
+      await cargarSaldo(amount);
+      setSaldoConfirmado(true);
+      // Esta línea ya funciona bien porque `prevSaldo` es un número
+      setSaldoActual(prevSaldo => (prevSaldo || 0) + amount);
+    } catch (error: any) {
+      console.error("Error de red al cargar saldo:", error.message);
+      alert(`Error al cargar el saldo: ${error.message}`);
     }
   };
 
   return (
     <main className="w-full flex flex-col gap-8 bg-white">
-      {/* Header (sin cambios) */}
+      {/* Header */}
       <div className="pt-9.5 pb-9.5 pl-8 flex gap-4 items-center space-x-2 text-sm text-muted-foreground border-b h-[53px]">
         <PanelLeft size={15} />
         <span className="text-muted-foreground">|</span>
@@ -146,7 +120,6 @@ export default function CargaSaldoPage() {
         <div className="border rounded-xl flex flex-row justify-between m-8 mt-4 p-5 pl-6 pt-8 pr-10">
           <div className="flex flex-col gap-2">
             <h2 className="text-2xl font-bold">Saldo Actual</h2>
-            {/* CAMBIO: Mostrar saldo de la API */}
             <h3 className="text-xl text-[#404040] font-bold">
               {isLoading ? "Cargando..." : formatCurrency(saldoActual ?? 0.0)}
             </h3>
@@ -164,7 +137,6 @@ export default function CargaSaldoPage() {
             </h4>
           </div>
           <div className=" border-b">
-            {/* ... (inputs de tarjeta, sin cambios) ... */}
             <div className="grid grid-cols-2  pt-8 ml-6 pb-8 gap-3 mr-8">
               <div className=" font-light">
                 <span>Número de la tarjeta</span>
@@ -204,14 +176,12 @@ export default function CargaSaldoPage() {
                 inputMode="decimal"
                 placeholder="0.00"
                 className="bg-transparent outline-none flex-1 text-black placeholder:text-muted-foreground"
-                // CAMBIO: Conectamos el input al estado
                 value={montoManual}
                 onChange={handleMontoChange}
               />
             </div>
           </div>
           <div className="grid grid-cols-4 gap-4 justify-between pl-5 pr-5">
-            {/* CAMBIO: Botones de monto actualizan el estado */}
             <div className="w-[100%] justify-between">
               <Button
                 onClick={() => handleSelectMonto(5000)}
@@ -255,14 +225,13 @@ export default function CargaSaldoPage() {
           </div>
 
           <div className="p-5 slign-center justify-self-center align-content-center">
-            {/* CAMBIO: Botón de confirmar llama a la función de POST */}
             <Button className="w-[350px]" onClick={handleCargarSaldo}>
               Confirmar Saldo Tarjeta
             </Button>
           </div>
         </div>
 
-        {/* Popup de Confirmación (sin cambios) */}
+        {/* Popup de Confirmación */}
         <AlertDialog open={saldoConfirmado} onOpenChange={setSaldoConfirmado}>
           <AlertDialogContent className="text-center w-[500px]">
             <AlertDialogHeader>

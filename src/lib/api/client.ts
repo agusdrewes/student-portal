@@ -1,4 +1,7 @@
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+// lib/api/client.ts
+
+// CAMBIO CRÍTICO: El BASE_URL debe apuntar a tu API de NestJS
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 export async function apiFetch<T>(
   endpoint: string,
@@ -13,6 +16,16 @@ export async function apiFetch<T>(
     ...options,
   });
 
-  if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
-  return res.json();
+  if (!res.ok) {
+    // Lanzamos un error para que el 'catch' en la página lo capture
+    throw new Error(`Error ${res.status}: ${await res.text()}`);
+  }
+
+  // Si la respuesta no tiene contenido (ej: un 204 No Content), devolvemos 'true'
+  const text = await res.text();
+  if (!text) {
+    return true as T;
+  }
+
+  return JSON.parse(text);
 }

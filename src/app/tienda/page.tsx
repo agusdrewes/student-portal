@@ -4,6 +4,10 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { PanelLeft, Plus, X } from "lucide-react";
 
+import { getSaldo, getHistorialCompras } from "@/lib/api/tienda";
+// CAMBIO: Importamos los tipos desde el nuevo archivo
+import { Saldo, Compra } from "@/lib/api/types";
+
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -19,69 +23,43 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
 
-interface Saldo {
-  balance: number;
-}
-
-interface Compra {
-  id: string; // o number
-  product: { description: string };
-  date: string;
-  total: number;
-}
+// CAMBIO: Borramos las interfaces de Saldo y Compra de aquí
 
 // --- Componente ---
 export default function TiendaPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  // CAMBIO: Nuevo estado para guardar la compra seleccionada
   const [selectedPurchase, setSelectedPurchase] = useState<Compra | null>(null);
-
   const [saldo, setSaldo] = useState<Saldo | null>(null);
   const [historial, setHistorial] = useState<Compra[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
-  const userId = 1;
 
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const saldoResponse = await fetch(
-          `http://localhost:3001/account/${userId}/balance`
-        );
-        if (saldoResponse.ok) {
-          const saldoData = await saldoResponse.json();
-          setSaldo(saldoData);
-        } else {
-          console.error(
-            "No se encontró la cuenta de saldo",
-            saldoResponse.status
-          );
-          setSaldo({ balance: 0 });
-        }
+        // 'saldoData' ahora es de tipo 'Saldo' gracias al Paso 2
+        const saldoData = await getSaldo();
+        setSaldo(saldoData); // ✅ ¡Error arreglado!
+      } catch (error: any) {
+        console.error("No se encontró la cuenta de saldo", error.message);
+        setSaldo({ balance: 0 });
+      }
 
-        const historialResponse = await fetch(
-          `http://localhost:3001/users/${userId}/purchases`
-        );
-        if (historialResponse.ok) {
-          const historialData = await historialResponse.json();
-          setHistorial(historialData);
-        } else {
-          console.error(
-            "No se encontró historial de compras",
-            historialResponse.status
-          );
-          setHistorial([]);
-        }
-      } catch (error) {
-        console.error("Error al conectar con la API:", error);
+      try {
+        // 'historialData' ahora es de tipo 'Compra[]'
+        const historialData = await getHistorialCompras();
+        setHistorial(historialData); // ✅ ¡Error arreglado!
+      } catch (error: any) {
+        console.error("No se encontró historial de compras", error.message);
+        setHistorial([]);
       }
       setIsLoading(false);
     };
 
     fetchData();
-  }, [userId]);
+  }, []);
 
+  // ... (El resto de tu componente y JSX no necesita cambios)
   // --- Funciones de Formato ---
   const formatCurrency = (amount: number) => {
     const options: Intl.NumberFormatOptions = {
@@ -105,13 +83,11 @@ export default function TiendaPage() {
     return `$${formattedAmount}`;
   };
 
-  // CAMBIO: Función para manejar el clic y abrir el popup
   const handlePurchaseClick = (compra: Compra) => {
     setSelectedPurchase(compra);
     setIsModalOpen(true);
   };
 
-  // CAMBIO: Función para formatear la fecha del popup
   const formatPopupDate = (dateString: string | undefined) => {
     if (!dateString) return "";
     const date = new Date(dateString);
@@ -126,7 +102,6 @@ export default function TiendaPage() {
     <main className="w-full flex flex-col bg-white">
       {/* Header */}
       <div className="pt-9.5 pb-9.5 pl-8 flex gap-4 items-center space-x-2 text-sm text-muted-foreground border-b h-[53px] shrink-0 bg-white">
-        {/* ... (código del header sin cambios) ... */}
         <PanelLeft size={15} />
         <span className="text-muted-foreground">|</span>
         <Breadcrumb>
@@ -142,7 +117,6 @@ export default function TiendaPage() {
       <div className="p-8 flex-grow overflow-auto">
         {/* Sección de Saldo Institucional */}
         <section className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-          {/* ... (código de saldo sin cambios) ... */}
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl font-bold">Saldo institucional</h1>
             <Link href="/tienda/cargarSaldo" passHref>
@@ -191,7 +165,6 @@ export default function TiendaPage() {
               <p>Cargando historial...</p>
             ) : historial.length > 0 ? (
               historial.map(compra => (
-                // CAMBIO: El onClick ahora llama a la nueva función
                 <div
                   key={compra.id}
                   className="bg-white border border-gray-200 rounded-xl p-4 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors"
@@ -216,7 +189,7 @@ export default function TiendaPage() {
           </div>
         </section>
 
-        {/* CAMBIO: El Popup ahora es dinámico */}
+        {/* Popup */}
         <AlertDialog open={isModalOpen} onOpenChange={setIsModalOpen}>
           <AlertDialogContent className="sm:max-w-md">
             <AlertDialogHeader>
@@ -234,7 +207,6 @@ export default function TiendaPage() {
 
             <Separator />
 
-            {/* Mostramos los datos de la compra seleccionada */}
             <div className="py-2 space-y-3">
               <div className="text-base">
                 <span className="font-bold text-gray-900">Fecha: </span>
@@ -244,7 +216,6 @@ export default function TiendaPage() {
               </div>
               <div className="text-base">
                 <span className="font-bold text-gray-900">Entidad: </span>
-                {/* Asumimos 'Biblioteca' si la descripción la incluye */}
                 <span className="text-gray-600">
                   {selectedPurchase?.product.description.includes("Biblioteca")
                     ? "Biblioteca"
@@ -258,7 +229,6 @@ export default function TiendaPage() {
             <div className="py-2 space-y-4">
               <h3 className="text-lg font-bold">Detalles de Pago</h3>
               <div className="space-y-3">
-                {/* Como no tenemos lista de items, mostramos la descripción general */}
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">
                     {selectedPurchase?.product.description}
