@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { PanelLeft, Plus, X } from "lucide-react";
 
@@ -19,39 +19,70 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
 
-// --- Datos de Ejemplo ---
-const saldoData = [
-  { label: "Saldo disponible", amount: 2450.0 },
-  { label: "Gastado este mes", amount: 850.0 },
-  { label: "Total cargado", amount: 3300.0 },
-];
+interface Saldo {
+  balance: number;
+}
 
-const historialCompras = [
-  {
-    id: 1,
-    description: "Compra en Biblioteca",
-    date: "28 de Agosto 2025",
-    amount: 20000.0,
-  },
-  {
-    id: 2,
-    description: "Almuerzo Cafetería",
-    date: "27 de Agosto 2025",
-    amount: 15300.0,
-  },
-  {
-    id: 3,
-    description: "Café Cafetería",
-    date: "25 de Agosto 2025",
-    amount: 6000.0,
-  },
-];
+interface Compra {
+  id: string; // o number
+  product: { description: string };
+  date: string;
+  total: number;
+}
 
 // --- Componente ---
 export default function TiendaPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  // CAMBIO: Nuevo estado para guardar la compra seleccionada
+  const [selectedPurchase, setSelectedPurchase] = useState<Compra | null>(null);
 
-  // Función para el formato de Saldo
+  const [saldo, setSaldo] = useState<Saldo | null>(null);
+  const [historial, setHistorial] = useState<Compra[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const userId = 1;
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const saldoResponse = await fetch(
+          `http://localhost:3001/account/${userId}/balance`
+        );
+        if (saldoResponse.ok) {
+          const saldoData = await saldoResponse.json();
+          setSaldo(saldoData);
+        } else {
+          console.error(
+            "No se encontró la cuenta de saldo",
+            saldoResponse.status
+          );
+          setSaldo({ balance: 0 });
+        }
+
+        const historialResponse = await fetch(
+          `http://localhost:3001/users/${userId}/purchases`
+        );
+        if (historialResponse.ok) {
+          const historialData = await historialResponse.json();
+          setHistorial(historialData);
+        } else {
+          console.error(
+            "No se encontró historial de compras",
+            historialResponse.status
+          );
+          setHistorial([]);
+        }
+      } catch (error) {
+        console.error("Error al conectar con la API:", error);
+      }
+      setIsLoading(false);
+    };
+
+    fetchData();
+  }, [userId]);
+
+  // --- Funciones de Formato ---
   const formatCurrency = (amount: number) => {
     const options: Intl.NumberFormatOptions = {
       style: "currency",
@@ -62,7 +93,6 @@ export default function TiendaPage() {
     return new Intl.NumberFormat("es-AR", options).format(amount);
   };
 
-  //función de formato solo para el Historial
   const formatHistoryAmount = (amount: number) => {
     const options: Intl.NumberFormatOptions = {
       style: "decimal",
@@ -75,22 +105,28 @@ export default function TiendaPage() {
     return `$${formattedAmount}`;
   };
 
-  // Datos estáticos para el popup
-  const purchaseDetails = {
-    date: "25 Octubre 2025",
-    time: "10:06",
-    entity: "Biblioteca",
-    items: [
-      { name: "Libro - Calculo diferencial e integral x 1", price: 24300 },
-      { name: "Libro - Probabilidad y estadística x 1", price: 26700 },
-    ],
-    total: 50000,
+  // CAMBIO: Función para manejar el clic y abrir el popup
+  const handlePurchaseClick = (compra: Compra) => {
+    setSelectedPurchase(compra);
+    setIsModalOpen(true);
+  };
+
+  // CAMBIO: Función para formatear la fecha del popup
+  const formatPopupDate = (dateString: string | undefined) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return date.toLocaleDateString("es-ES", {
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+    });
   };
 
   return (
     <main className="w-full flex flex-col bg-white">
-      {/* Header con Breadcrumbs */}
+      {/* Header */}
       <div className="pt-9.5 pb-9.5 pl-8 flex gap-4 items-center space-x-2 text-sm text-muted-foreground border-b h-[53px] shrink-0 bg-white">
+        {/* ... (código del header sin cambios) ... */}
         <PanelLeft size={15} />
         <span className="text-muted-foreground">|</span>
         <Breadcrumb>
@@ -106,6 +142,7 @@ export default function TiendaPage() {
       <div className="p-8 flex-grow overflow-auto">
         {/* Sección de Saldo Institucional */}
         <section className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+          {/* ... (código de saldo sin cambios) ... */}
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl font-bold">Saldo institucional</h1>
             <Link href="/tienda/cargarSaldo" passHref>
@@ -115,17 +152,34 @@ export default function TiendaPage() {
             </Link>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {saldoData.map(item => (
-              <div
-                key={item.label}
-                className="bg-gray-100 rounded-lg p-6 flex flex-col gap-2"
-              >
-                <span className="text-2xl font-bold text-gray-800">
-                  {formatCurrency(item.amount)}
-                </span>
-                <span className="text-sm text-gray-500">{item.label}</span>
-              </div>
-            ))}
+            {isLoading ? (
+              <p>Cargando saldo...</p>
+            ) : (
+              <>
+                <div className="bg-gray-100 rounded-lg p-6 flex flex-col gap-2">
+                  <span className="text-2xl font-bold text-gray-800">
+                    {formatCurrency(saldo?.balance ?? 0)}
+                  </span>
+                  <span className="text-sm text-gray-500">
+                    Saldo disponible
+                  </span>
+                </div>
+                <div className="bg-gray-100 rounded-lg p-6 flex flex-col gap-2">
+                  <span className="text-2xl font-bold text-gray-800">
+                    {formatCurrency(0)}
+                  </span>
+                  <span className="text-sm text-gray-500">
+                    Gastado este mes
+                  </span>
+                </div>
+                <div className="bg-gray-100 rounded-lg p-6 flex flex-col gap-2">
+                  <span className="text-2xl font-bold text-gray-800">
+                    {formatCurrency(0)}
+                  </span>
+                  <span className="text-sm text-gray-500">Total cargado</span>
+                </div>
+              </>
+            )}
           </div>
         </section>
 
@@ -133,27 +187,36 @@ export default function TiendaPage() {
         <section className="mt-8 bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
           <h2 className="text-2xl font-bold mb-6">Historial de compras</h2>
           <div className="space-y-4">
-            {historialCompras.map(compra => (
-              <div
-                key={compra.id}
-                className="bg-white border border-gray-200 rounded-xl p-4 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors"
-                onClick={() => setIsModalOpen(true)}
-              >
-                <div>
-                  <p className="font-semibold text-gray-800 text-lg">
-                    {compra.description}
+            {isLoading ? (
+              <p>Cargando historial...</p>
+            ) : historial.length > 0 ? (
+              historial.map(compra => (
+                // CAMBIO: El onClick ahora llama a la nueva función
+                <div
+                  key={compra.id}
+                  className="bg-white border border-gray-200 rounded-xl p-4 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors"
+                  onClick={() => handlePurchaseClick(compra)}
+                >
+                  <div>
+                    <p className="font-semibold text-gray-800 text-lg">
+                      {compra.product.description}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      {new Date(compra.date).toLocaleDateString("es-ES")}
+                    </p>
+                  </div>
+                  <p className="font-semibold text-gray-900 text-lg">
+                    {formatHistoryAmount(compra.total)}
                   </p>
-                  <p className="text-sm text-gray-500">{compra.date}</p>
                 </div>
-                <p className="font-semibold text-gray-900 text-lg">
-                  {formatHistoryAmount(compra.amount)}
-                </p>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-gray-500">No hay compras en tu historial.</p>
+            )}
           </div>
         </section>
 
-        {/* Popup de Resumen de Compra */}
+        {/* CAMBIO: El Popup ahora es dinámico */}
         <AlertDialog open={isModalOpen} onOpenChange={setIsModalOpen}>
           <AlertDialogContent className="sm:max-w-md">
             <AlertDialogHeader>
@@ -171,16 +234,22 @@ export default function TiendaPage() {
 
             <Separator />
 
+            {/* Mostramos los datos de la compra seleccionada */}
             <div className="py-2 space-y-3">
               <div className="text-base">
                 <span className="font-bold text-gray-900">Fecha: </span>
                 <span className="text-gray-600">
-                  {purchaseDetails.date} {purchaseDetails.time}
+                  {formatPopupDate(selectedPurchase?.date)}
                 </span>
               </div>
               <div className="text-base">
                 <span className="font-bold text-gray-900">Entidad: </span>
-                <span className="text-gray-600">{purchaseDetails.entity}</span>
+                {/* Asumimos 'Biblioteca' si la descripción la incluye */}
+                <span className="text-gray-600">
+                  {selectedPurchase?.product.description.includes("Biblioteca")
+                    ? "Biblioteca"
+                    : "Cafetería"}
+                </span>
               </div>
             </div>
 
@@ -189,14 +258,15 @@ export default function TiendaPage() {
             <div className="py-2 space-y-4">
               <h3 className="text-lg font-bold">Detalles de Pago</h3>
               <div className="space-y-3">
-                {purchaseDetails.items.map(item => (
-                  <div key={item.name} className="flex justify-between text-sm">
-                    <span className="text-gray-600">{item.name}</span>
-                    <span className="font-medium text-gray-900">
-                      {formatHistoryAmount(item.price)}
-                    </span>
-                  </div>
-                ))}
+                {/* Como no tenemos lista de items, mostramos la descripción general */}
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">
+                    {selectedPurchase?.product.description}
+                  </span>
+                  <span className="font-medium text-gray-900">
+                    {formatHistoryAmount(selectedPurchase?.total ?? 0)}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -205,7 +275,7 @@ export default function TiendaPage() {
             <div className="py-2 flex justify-between">
               <span className="text-lg font-bold">Total</span>
               <span className="text-lg font-bold">
-                {formatHistoryAmount(purchaseDetails.total)}
+                {formatHistoryAmount(selectedPurchase?.total ?? 0)}
               </span>
             </div>
           </AlertDialogContent>
