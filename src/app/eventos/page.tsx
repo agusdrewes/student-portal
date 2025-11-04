@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   CalendarIcon,
   ChevronLeft,
@@ -8,14 +8,12 @@ import {
   PanelLeft,
   X,
 } from "lucide-react";
-
 import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbList,
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
-
 import {
   AlertDialog,
   AlertDialogContent,
@@ -24,8 +22,8 @@ import {
   AlertDialogDescription,
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
-
 import { Badge } from "@/components/ui/badge";
+import Loader from "@/components/ui/loader";
 
 const PAGE_TITLE = "Calendario Académico";
 
@@ -37,12 +35,15 @@ type UniEvent = {
   date: string;
   time?: string;
   meta?: string;
+  description?: string;
 };
-type DiningSlot = { label: string; from: string; to: string };
 
-const dotColors: Record<EventType, string> = {
+type DiningSlot = { label: string; from: string; to: string };
+const dotColors: Record<string, string> = {
   exam: "bg-blue-500",
   event: "bg-amber-600",
+  holiday: "bg-green-500",
+  class: "bg-purple-500",
 };
 
 const TZ = "America/Argentina/Buenos_Aires" as const;
@@ -73,11 +74,13 @@ const fmtMonthOnly = new Intl.DateTimeFormat("es-AR", {
 function monthHeader(year: number, monthIndex: number) {
   return `${cap(fmtMonth.format(new Date(year, monthIndex, 1)))} ${year}`;
 }
-
 function toDateOnly(d: Date) {
-  const x = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  return x.toISOString().slice(0, 10);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
+
 function addMonths(d: Date, n: number) {
   const x = new Date(d);
   x.setMonth(x.getMonth() + n);
@@ -85,7 +88,7 @@ function addMonths(d: Date, n: number) {
 }
 function daysGrid(year: number, monthIndex: number) {
   const first = new Date(year, monthIndex, 1);
-  const start = (first.getDay() + 6) % 7; // Lu=0..Do=6
+  const start = (first.getDay() + 6) % 7;
   const last = new Date(year, monthIndex + 1, 0).getDate();
   const cells: { date: Date; inMonth: boolean }[] = [];
   for (let i = start; i > 0; i--)
@@ -105,78 +108,80 @@ function daysGrid(year: number, monthIndex: number) {
   return cells;
 }
 
-const EVENTS: UniEvent[] = [
-  {
-    id: "e1",
-    type: "event",
-    title: "Comienzan las inscripciones del segundo cuatrimestre",
-    date: "2025-06-27",
-    time: "12:00",
-  },
-  {
-    id: "e2",
-    type: "exam",
-    title: "Parcial estadística",
-    date: "2025-08-23",
-    time: "19:30 a 21:00",
-  },
-  {
-    id: "e3",
-    type: "event",
-    title: "Reunión informativa nuevas carreras",
-    date: "2025-08-25",
-    time: "19:30 a 20:30",
-  },
-];
-const DESCRIPTIONS: Record<string, string> = {
-  e1: "Encuentre las inscripciones a las materias para el segundo cuatrimestre 2025 en la página de inscripciones.",
-  e2: "Parcial correspondiente a la primera mitad de la cursada. Revisar contenidos y material de apoyo.",
-  e3: "Charla informativa sobre nuevas carreras y planes de estudio. Abierta al público general.",
-};
-
 const DINING_SLOTS: DiningSlot[] = [
   { label: "Desayuno", from: "07:00", to: "12:00" },
   { label: "Almuerzo", from: "12:00", to: "16:00" },
   { label: "Merienda", from: "16:00", to: "20:00" },
 ];
 
-function nextLine(dateISO: string, time?: string) {
-  const d = new Date(dateISO);
-  const month = cap(fmtMonthOnly.format(d));
-  const day = d.getDate();
-  return time ? `${month} ${day} - ${time}` : `${month} ${day}`;
-}
-
 export default function EventosPage() {
-  const [cursor, setCursor] = useState(new Date(2025, 5, 27));
-  const [selected, setSelected] = useState(new Date(2025, 5, 27));
+  const [cursor, setCursor] = useState(new Date());
+  const [selected, setSelected] = useState(new Date());
+  const [events, setEvents] = useState<UniEvent[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [openEventDlg, setOpenEventDlg] = useState(false);
   const [activeEvent, setActiveEvent] = useState<UniEvent | null>(null);
 
+  useEffect(() => {
+    async function fetchEvents() {
+      try {
+        setLoading(true);
+        const res = await fetch(
+          "http://localhost:3000/calendar/user/6b4eab19-c3a5-406d-9002-2e3a0e8dbcc5"
+        );
+        if (!res.ok) throw new Error("Error al obtener eventos");
+        const data = await res.json();
+
+        // 🔥 Normalizamos tipo y fecha
+        const fixed = data.map((ev: any) => {
+          const normalizedType = ev.eventType?.toLowerCase?.() ?? "event"; // por si viene "EXAM" o null
+          return {
+            ...ev,
+            type: normalizedType as EventType,
+            date: ev.date.slice(0, 10),
+          };
+        });
+
+        setEvents(fixed);
+      } catch (err) {
+        console.error("❌ Error al traer eventos:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchEvents();
+  }, []);
+
+  // ✅ FIX: llenar correctamente el mapa de eventos por fecha
   const eventsByDay = useMemo(() => {
     const map = new Map<string, UniEvent[]>();
-    EVENTS.forEach(ev => {
-      const arr = map.get(ev.date) ?? [];
-      arr.push(ev);
-      map.set(ev.date, arr);
+    events.forEach(ev => {
+      // usamos directamente la propiedad 'date' sin convertirla
+      const dateKey = ev.date.slice(0, 10);
+      if (!map.has(dateKey)) map.set(dateKey, []);
+      map.get(dateKey)!.push(ev);
     });
     return map;
-  }, []);
+  }, [events]);
 
   const selectedKey = toDateOnly(selected);
   const selectedEvents = eventsByDay.get(selectedKey) ?? [];
 
   const nextEvents = useMemo(() => {
     const threshold = new Date(selectedKey);
-    return EVENTS.filter(e => new Date(e.date) > threshold)
+    return events
+      .filter(e => new Date(e.date) > threshold)
       .sort((a, b) => a.date.localeCompare(b.date))
       .slice(0, 5);
-  }, [selectedKey]);
+  }, [selectedKey, events]);
+
+  if (loading) return <Loader message="Cargando eventos..." />;
 
   return (
     <main>
       <div className="bg-[#f5f7fb] text-gray-900 min-h-[calc(100vh-64px)]">
+        {/* ENCABEZADO */}
         <div className="pt-9.5 pb-9.5 pl-8 flex gap-4 items-center space-x-2 text-sm text-muted-foreground border-b h-[53px] bg-white">
           <PanelLeft size={15} />
           <span className="text-muted-foreground">|</span>
@@ -189,36 +194,38 @@ export default function EventosPage() {
           </Breadcrumb>
         </div>
 
+        {/* CONTENIDO */}
         <div className="mx-auto max-w-[1200px] px-6 py-8">
           <h1 className="text-[28px] leading-[36px] font-semibold mb-4">
             {PAGE_TITLE}
           </h1>
 
-          <div className="flex items-center gap-6 text-[14px] mb-4">
-            <span className="inline-flex items-center gap-2">
-              <span className="w-3 h-3 rounded bg-blue-500" /> Exámenes
-            </span>
-            <span className="inline-flex items-center gap-2">
-              <span className="w-3 h-3 rounded bg-amber-600" /> Eventos
-            </span>
+          {/* LEYENDA DE TIPOS DE EVENTO */}
+          <div className="flex flex-wrap items-center gap-6 text-[14px] mb-4">
+            {[...new Set(events.map(ev => ev.type))].map(type => (
+              <span key={type} className="inline-flex items-center gap-2">
+                <span
+                  className={`w-3 h-3 rounded ${dotColors[type] || "bg-gray-400"}`}
+                />
+                {cap(type)}
+              </span>
+            ))}
           </div>
 
           <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
+            {/* CALENDARIO */}
             <div className="space-y-6">
               <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
                 <div className="flex items-center justify-between px-5 pt-4">
                   <button
                     onClick={() => setCursor(addMonths(cursor, -1))}
                     className="p-2 rounded-full hover:bg-gray-100"
-                    aria-label="Mes anterior"
                   >
                     <ChevronLeft size={18} />
                   </button>
-                  <div className="w-[1px] h-5" />
                   <button
                     onClick={() => setCursor(addMonths(cursor, 1))}
                     className="p-2 rounded-full hover:bg-gray-100"
-                    aria-label="Mes siguiente"
                   >
                     <ChevronRight size={18} />
                   </button>
@@ -237,13 +244,11 @@ export default function EventosPage() {
                         </div>
 
                         <div className="grid grid-cols-7 text-center text-[12px] text-gray-500 px-1">
-                          <div className="py-2">Lu</div>
-                          <div className="py-2">Ma</div>
-                          <div className="py-2">Mi</div>
-                          <div className="py-2">Ju</div>
-                          <div className="py-2">Vi</div>
-                          <div className="py-2">Sá</div>
-                          <div className="py-2">Do</div>
+                          {["Lu", "Ma", "Mi", "Ju", "Vi", "Sá", "Do"].map(d => (
+                            <div key={d} className="py-2">
+                              {d}
+                            </div>
+                          ))}
                         </div>
 
                         <div className="grid grid-cols-7 gap-1 px-1">
@@ -273,7 +278,9 @@ export default function EventosPage() {
                                     {evs.map(e => (
                                       <span
                                         key={e.id}
-                                        className={`w-1.5 h-1.5 rounded-full ${dotColors[e.type]}`}
+                                        className={`w-1.5 h-1.5 rounded-full ${
+                                          dotColors[e.type] || "bg-gray-400"
+                                        }`}
                                       />
                                     ))}
                                   </span>
@@ -288,6 +295,7 @@ export default function EventosPage() {
                 </div>
               </div>
 
+              {/* RESERVAS */}
               <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
                 <div className="px-5 py-4 border-b">
                   <h3 className="text-[15px] font-semibold text-gray-700">
@@ -318,6 +326,7 @@ export default function EventosPage() {
               </div>
             </div>
 
+            {/* PANEL DE EVENTOS */}
             <div className="space-y-6">
               <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
                 <div className="px-5 py-4 border-b">
@@ -347,6 +356,7 @@ export default function EventosPage() {
                 </div>
               </div>
 
+              {/* PRÓXIMOS EVENTOS */}
               <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
                 <div className="px-5 py-4 border-b">
                   <h3 className="text-[15px] font-semibold text-gray-700">
@@ -379,6 +389,7 @@ export default function EventosPage() {
         </div>
       </div>
 
+      {/* DIALOGO */}
       <AlertDialog open={openEventDlg} onOpenChange={setOpenEventDlg}>
         <AlertDialogContent className="w-[520px]">
           <div className="flex justify-end">
@@ -414,7 +425,7 @@ export default function EventosPage() {
               <div>
                 <div className="font-medium mb-1">Descripción</div>
                 <AlertDialogDescription className="text-gray-700">
-                  {activeEvent ? DESCRIPTIONS[activeEvent.id] : ""}
+                  {activeEvent?.description ?? "Sin descripción."}
                 </AlertDialogDescription>
               </div>
             </div>
@@ -427,17 +438,15 @@ export default function EventosPage() {
 
 function EventCard({ ev }: { ev: UniEvent }) {
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
-      <span className={`mt-1 w-3 h-3 rounded-full ${dotColors[ev.type]}`} />
-      <div className="flex-1">
-        <div className="text-sm font-medium text-gray-800">{ev.title}</div>
-        <div className="text-xs text-gray-600 flex items-center gap-1">
-          <CalendarIcon size={14} />
-          {cap(fmtEvent.format(new Date(ev.date)))}
-          {ev.time ? <>&nbsp;·&nbsp;{ev.time}</> : null}
-          {ev.meta ? <>&nbsp;·&nbsp;{ev.meta}</> : null}
-        </div>
-      </div>
+    <div className="flex items-center gap-2 mb-1">
+      <span
+        className={`px-2 py-0.5 text-[11px] font-medium rounded-full text-white ${
+          dotColors[ev.type] || "bg-gray-400"
+        }`}
+      >
+        {cap(ev.type)}
+      </span>
+      <div className="text-sm font-medium text-gray-800">{ev.title}</div>
     </div>
   );
 }
