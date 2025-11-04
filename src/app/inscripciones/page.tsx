@@ -89,8 +89,8 @@ export default function InscripcionesPage() {
         try {
           for (const [courseId, commissionId] of selectedEntries) {
             await enrollUserInCourseIdAndCommissionId(
-              Number(courseId),
-              Number(commissionId)
+              String(courseId),
+              String(commissionId)
             );
             console.log(
               `✅ Inscripción creada: curso ${courseId}, comisión ${commissionId}`

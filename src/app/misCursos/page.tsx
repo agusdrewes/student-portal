@@ -61,7 +61,7 @@ export default function MisCursosPage() {
     async function fetchData() {
       try {
         const userId = 1;
-        const data = await getAcademicHistoryByUser(userId);
+        const data = await getAcademicHistoryByUser();
         sethistoricEnrollments(data as any[]);
       } catch (err) {
         console.error("❌ Error al traer inscripciones:", err);

@@ -66,15 +66,16 @@ export default function CursoDetallePage() {
         setLoading(true); // 🔹 empezamos a cargar
 
         const [courseData, auxAttendance, auxgrades] = await Promise.all([
-          getEnrollmentDetailsByid(Number(commissionId)),
-          getAtendencessByUserID(Number(commissionId)),
-          getCoursesGradesByCommissionID(Number(commissionId)),
+          getEnrollmentDetailsByid(commissionId),
+          getAtendencessByUserID(commissionId),
+          getCoursesGradesByCommissionID(commissionId),
         ]);
+
+        console.log(courseData);
 
         setCourseDetails(courseData);
         setAttendances(auxAttendance);
         setGrades(auxgrades);
-        console.log(auxgrades);
       } catch (err) {
         console.error("❌ Error al traer datos del curso:", err);
       } finally {

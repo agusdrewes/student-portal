@@ -1,7 +1,7 @@
 // lib/api/client.ts
 
 // CAMBIO CRÍTICO: El BASE_URL debe apuntar a tu API de NestJS
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
 export async function apiFetch<T>(
   endpoint: string,

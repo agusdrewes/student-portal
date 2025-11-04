@@ -4,7 +4,7 @@ import { apiFetch } from "./client";
 // Importamos los tipos que NUESTRA APP espera (Saldo.balance es un 'number')
 import { Saldo, Compra } from "./types";
 
-const userId = 1;
+const userId = "6b4eab19-c3a5-406d-9002-2e3a0e8dbcc5";
 
 // Esta es la interfaz de lo que la API *REALMENTE* nos envía
 interface ApiSaldoResponse {

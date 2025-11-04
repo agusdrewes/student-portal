@@ -51,8 +51,7 @@ export default function CargaSaldoPage() {
     const fetchSaldo = async () => {
       setIsLoading(true);
       try {
-        const data = await getSaldo(); // data.balance ya es un número
-        // CAMBIO 1: Usamos el número directamente
+        const data = await getSaldo();
         setSaldoActual(data.balance);
       } catch (error: any) {
         console.error("No se pudo obtener el saldo:", error.message);
@@ -152,7 +151,7 @@ export default function CargaSaldoPage() {
               </div>
 
               <div className=" font-light pt-6">
-                <span>Fecha de nacimiento</span>
+                <span>Fecha de Vacimiento</span>
               </div>
               <div className="font-light pt-6">
                 <span>CVV</span>
