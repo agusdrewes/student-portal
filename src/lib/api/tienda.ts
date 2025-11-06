@@ -1,12 +1,13 @@
 // lib/api/tienda.ts
 
 import { apiFetch } from "./client";
-// Importamos los tipos que NUESTRA APP espera (Saldo.balance es un 'number')
+// Asumimos que types.ts tiene Saldo y Compra
 import { Saldo, Compra } from "./types";
 
-const userId = "6b4eab19-c3a5-406d-9002-2e3a0e8dbcc5";
+// Este es el ID de tu usuario de prueba local
+const userId = "c8a85eb5-7018-4f16-a232-54dbd04140dc";
 
-// Esta es la interfaz de lo que la API *REALMENTE* nos envía
+// Interfaz de lo que la API envía
 interface ApiSaldoResponse {
   balance: string; // La API envía el saldo como string
 }
@@ -15,13 +16,9 @@ interface ApiSaldoResponse {
  * Obtiene el saldo actual del usuario.
  */
 export async function getSaldo(): Promise<Saldo> {
-  // 1. Pedimos los datos y le decimos a apiFetch qué forma *real* tienen
   const apiData = await apiFetch<ApiSaldoResponse>(
     `/account/${userId}/balance`
   );
-
-  // 2. TRANSFORMAMOS los datos de la API a lo que nuestra App espera
-  // Convertimos el string a un número.
   return {
     balance: parseFloat(apiData.balance),
   };
@@ -31,18 +28,32 @@ export async function getSaldo(): Promise<Saldo> {
  * Obtiene el historial de compras del usuario.
  */
 export async function getHistorialCompras(): Promise<Compra[]> {
-  // (Esta función ya estaba bien)
   return apiFetch<Compra[]>(`/users/${userId}/purchases`);
+}
+
+// CAMBIO: Esta es la interfaz que tu *app* usa (buena práctica)
+export interface CardDetails {
+  cardNumber: string;
+  expiration: string; // <-- El nombre correcto
+  cvv: string;
+  amount: number; // <-- El tipo correcto (número)
 }
 
 /**
  * Realiza un depósito en la cuenta del usuario.
- * @param amount El monto a depositar
  */
-export async function cargarSaldo(amount: number) {
-  // (Esta función ya estaba bien)
+export async function cargarSaldo(depositData: CardDetails) {
+  // CAMBIO: Creamos el DTO para la API
+  // que cumpla con los requisitos que nos dio
+  const apiRequestBody = {
+    cardNumber: depositData.cardNumber,
+    expiration: depositData.expiration,
+    cvv: depositData.cvv,
+    amount: String(depositData.amount), // Convertimos a string para la API
+  };
+
   return apiFetch<any>(`/account/${userId}/deposit`, {
     method: "POST",
-    body: JSON.stringify({ amount: amount }),
+    body: JSON.stringify(apiRequestBody),
   });
 }

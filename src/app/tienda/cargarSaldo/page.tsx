@@ -3,9 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { PanelLeft, WalletMinimal, X } from "lucide-react";
 
-import { getSaldo, cargarSaldo } from "@/lib/api/tienda";
-// Asumimos que types.ts sigue en /lib/api/
-// import { Saldo } from "@/lib/api/types";
+import { getSaldo, cargarSaldo, CardDetails } from "@/lib/api/tienda";
 
 import {
   Breadcrumb,
@@ -36,6 +34,13 @@ export default function CargaSaldoPage() {
   const [saldoActual, setSaldoActual] = useState<number | null>(null);
   const [montoManual, setMontoManual] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
+
+  // Estados para los campos de la tarjeta
+  const [cardNumber, setCardNumber] = useState("");
+  const [expiration, setExpiration] = useState("");
+  const [cvv, setCvv] = useState("");
+  // CAMBIO: Volvemos a agregar el estado para 'cardName'
+  const [cardName, setCardName] = useState("");
 
   const router = useRouter();
 
@@ -74,20 +79,53 @@ export default function CargaSaldoPage() {
   };
 
   const handleCargarSaldo = async () => {
-    const amount = parseFloat(montoManual);
-    if (isNaN(amount) || amount <= 0) {
+    const amountAsNumber = parseFloat(montoManual);
+
+    // CAMBIO: Agregamos 'cardName' a la validación del frontend
+    if (isNaN(amountAsNumber) || amountAsNumber <= 0) {
       alert("Por favor, ingrese un monto válido.");
       return;
     }
+    if (!cardNumber || !expiration || !cvv || !cardName) {
+      alert("Por favor, complete todos los datos de la tarjeta.");
+      return;
+    }
+    if (cardNumber.length < 16) {
+      alert("El número de tarjeta debe tener al menos 16 dígitos.");
+      return;
+    }
+    if (!expiration.includes("/")) {
+      alert("El formato de vencimiento debe ser MM/YY.");
+      return;
+    }
+
+    // Creamos el DTO que espera la API
+    // NOTA: 'cardName' NO se incluye aquí, porque la API lo rechaza.
+    const depositData: CardDetails = {
+      cardNumber,
+      expiration,
+      cvv,
+      amount: amountAsNumber,
+    };
 
     try {
-      await cargarSaldo(amount);
+      await cargarSaldo(depositData);
       setSaldoConfirmado(true);
-      // Esta línea ya funciona bien porque `prevSaldo` es un número
-      setSaldoActual(prevSaldo => (prevSaldo || 0) + amount);
+      setSaldoActual(prevSaldo => (prevSaldo || 0) + amountAsNumber);
     } catch (error: any) {
       console.error("Error de red al cargar saldo:", error.message);
-      alert(`Error al cargar el saldo: ${error.message}`);
+      let errorMessage = "Error al cargar el saldo. Intente de nuevo.";
+      try {
+        const errorObj = JSON.parse(error.message);
+        if (errorObj.message && Array.isArray(errorObj.message)) {
+          errorMessage = errorObj.message.join("\n");
+        } else if (errorObj.message) {
+          errorMessage = errorObj.message;
+        }
+      } catch (e) {
+        errorMessage = error.message;
+      }
+      alert(errorMessage);
     }
   };
 
@@ -95,6 +133,7 @@ export default function CargaSaldoPage() {
     <main className="w-full flex flex-col gap-8 bg-white">
       {/* Header */}
       <div className="pt-9.5 pb-9.5 pl-8 flex gap-4 items-center space-x-2 text-sm text-muted-foreground border-b h-[53px]">
+        {/* ...código del header... */}
         <PanelLeft size={15} />
         <span className="text-muted-foreground">|</span>
         <Breadcrumb>
@@ -117,6 +156,7 @@ export default function CargaSaldoPage() {
       <div>
         {/* Saldo Actual */}
         <div className="border rounded-xl flex flex-row justify-between m-8 mt-4 p-5 pl-6 pt-8 pr-10">
+          {/* ...código de saldo actual... */}
           <div className="flex flex-col gap-2">
             <h2 className="text-2xl font-bold">Saldo Actual</h2>
             <h3 className="text-xl text-[#404040] font-bold">
@@ -132,10 +172,11 @@ export default function CargaSaldoPage() {
         <div className="border rounded-xl m-8 mt-4 pt-8 ">
           <div className="pb-3 border-b">
             <h4 className="text-base font-bold pl-6 pb-5 ">
-              Tarjeta de Débito/Crédito
+              Tarjeta de Débito/CrédITO
             </h4>
           </div>
           <div className=" border-b">
+            {/* CAMBIO: Volvemos a agregar el campo "Nombre y apellido" */}
             <div className="grid grid-cols-2  pt-8 ml-6 pb-8 gap-3 mr-8">
               <div className=" font-light">
                 <span>Número de la tarjeta</span>
@@ -144,29 +185,47 @@ export default function CargaSaldoPage() {
                 <span>Nombre y apellido que aparece en la tarjeta</span>
               </div>
               <div>
-                <Input placeholder="1234 5678 9012 345"></Input>
+                <Input
+                  placeholder="1234 5678 9012 345"
+                  value={cardNumber}
+                  onChange={e => setCardNumber(e.target.value)}
+                />
               </div>
               <div>
-                <Input placeholder="Juan Perez"></Input>
+                {/* Campo restaurado y conectado al estado 'cardName' */}
+                <Input
+                  placeholder="Juan Perez"
+                  value={cardName}
+                  onChange={e => setCardName(e.target.value)}
+                />
               </div>
 
               <div className=" font-light pt-6">
-                <span>Fecha de Vacimiento</span>
+                <span>Fecha de Vencimiento</span>
               </div>
               <div className="font-light pt-6">
                 <span>CVV</span>
               </div>
               <div>
-                <Input placeholder="MM/AA"></Input>
+                <Input
+                  placeholder="MM/YY"
+                  value={expiration}
+                  onChange={e => setExpiration(e.target.value)}
+                />
               </div>
               <div>
-                <Input placeholder="123"></Input>
+                <Input
+                  placeholder="123"
+                  value={cvv}
+                  onChange={e => setCvv(e.target.value)}
+                />
               </div>
             </div>
           </div>
 
           {/* Sección de Monto */}
           <div className="p-6">
+            {/* ...código de monto... */}
             <h3 className="font-light">Monto a cargar</h3>
             <div className="flex items-center border border-input rounded-full px-3 mt-5 py-2 w-full bg-white text-sm">
               <span className="text-gray-500 mr-2">$</span>
@@ -181,12 +240,13 @@ export default function CargaSaldoPage() {
             </div>
           </div>
           <div className="grid grid-cols-4 gap-4 justify-between pl-5 pr-5">
+            {/* ...código de botones de monto... */}
             <div className="w-[100%] justify-between">
               <Button
                 onClick={() => handleSelectMonto(5000)}
                 className={`w-full border border-gray text-black ${
                   selectedAmount === 5000 ? "bg-gray-200" : "bg-white"
-                } hover:bg-gray-100`}
+                } hover:bg-gray-100 cursor-pointer`}
               >
                 $5.000
               </Button>
@@ -196,7 +256,7 @@ export default function CargaSaldoPage() {
                 onClick={() => handleSelectMonto(7000)}
                 className={`w-full border border-gray text-black ${
                   selectedAmount === 7000 ? "bg-gray-200" : "bg-white"
-                } hover:bg-gray-100`}
+                } hover:bg-gray-100 cursor-pointer`}
               >
                 $7.000
               </Button>
@@ -206,7 +266,7 @@ export default function CargaSaldoPage() {
                 onClick={() => handleSelectMonto(10000)}
                 className={`w-full border border-gray text-black ${
                   selectedAmount === 10000 ? "bg-gray-200" : "bg-white"
-                } hover:bg-gray-100`}
+                } hover:bg-gray-100 cursor-pointer`}
               >
                 $10.000
               </Button>
@@ -216,7 +276,7 @@ export default function CargaSaldoPage() {
                 onClick={() => handleSelectMonto(20000)}
                 className={`w-full border border-gray text-black ${
                   selectedAmount === 20000 ? "bg-gray-200" : "bg-white"
-                } hover:bg-gray-100`}
+                } hover:bg-gray-100 cursor-pointer`}
               >
                 $20.000
               </Button>
@@ -224,7 +284,11 @@ export default function CargaSaldoPage() {
           </div>
 
           <div className="p-5 slign-center justify-self-center align-content-center">
-            <Button className="w-[350px]" onClick={handleCargarSaldo}>
+            {/* ...código de botón de confirmar... */}
+            <Button
+              className="w-[350px] cursor-pointer"
+              onClick={handleCargarSaldo}
+            >
               Confirmar Saldo Tarjeta
             </Button>
           </div>
@@ -232,6 +296,7 @@ export default function CargaSaldoPage() {
 
         {/* Popup de Confirmación */}
         <AlertDialog open={saldoConfirmado} onOpenChange={setSaldoConfirmado}>
+          {/* ...código del popup... */}
           <AlertDialogContent className="text-center w-[500px]">
             <AlertDialogHeader>
               <div className="jutify-start">

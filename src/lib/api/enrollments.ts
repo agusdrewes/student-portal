@@ -1,8 +1,10 @@
+// lib/api/enrollments.ts
+
 import { apiFetch } from "./client";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+// const BASE_URL = ... <--- ¡LÍNEA BORRADA!
 
-const userId = "6b4eab19-c3a5-406d-9002-2e3a0e8dbcc5";
+const userId = "c8a85eb5-7018-4f16-a232-54dbd04140dc";
 
 export async function getEnrollmentsByUser() {
   return apiFetch(`/enrollments?userId=${userId}`);
