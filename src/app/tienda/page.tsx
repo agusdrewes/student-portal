@@ -112,7 +112,7 @@ export default function TiendaPage() {
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl font-bold">Saldo institucional</h1>
             <Link href="/tienda/cargarSaldo" passHref>
-              <Button className="bg-[#6F97F0] hover:bg-[#5a81d4]">
+              <Button className="bg-[#6F97F0] hover:bg-[#5a81d4] cursor-pointer">
                 <Plus className="mr-2 h-4 w-4" /> Cargar Saldo
               </Button>
             </Link>
@@ -206,12 +206,17 @@ export default function TiendaPage() {
                   {formatPopupDate(selectedPurchase?.date)}
                 </span>
               </div>
+              {/* CAMBIO: Lógica de Entidad Corregida */}
               <div className="text-base">
                 <span className="font-bold text-gray-900">Entidad: </span>
                 <span className="text-gray-600">
                   {selectedPurchase?.product.description.includes("Biblioteca")
                     ? "Biblioteca"
-                    : "Cafetería"}
+                    : selectedPurchase?.product.description.includes(
+                          "Cafetería"
+                        )
+                      ? "Cafetería"
+                      : "Tienda General"}
                 </span>
               </div>
             </div>

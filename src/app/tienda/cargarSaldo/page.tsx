@@ -3,7 +3,9 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { PanelLeft, WalletMinimal, X } from "lucide-react";
 
-import { getSaldo, cargarSaldo, CardDetails } from "@/lib/api/tienda";
+// CAMBIO: Importamos CardDetails desde types.ts
+import { getSaldo, cargarSaldo } from "@/lib/api/tienda";
+import { CardDetails } from "@/lib/api/types";
 
 import {
   Breadcrumb,
@@ -25,6 +27,15 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
+
+// Definimos un tipo para nuestro objeto de errores
+type FormErrors = {
+  cardNumber?: string;
+  expiration?: string;
+  cvv?: string;
+  amount?: string;
+};
 
 export default function CargaSaldoPage() {
   const [selectedAmount, setSelectedAmount] = React.useState<number | null>(
@@ -35,10 +46,14 @@ export default function CargaSaldoPage() {
   const [montoManual, setMontoManual] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
 
+  // Estados para los campos de la tarjeta
   const [cardNumber, setCardNumber] = useState("");
+  const [cardName, setCardName] = useState(""); // Estado para el nombre
   const [expiration, setExpiration] = useState("");
   const [cvv, setCvv] = useState("");
-  const [cardName, setCardName] = useState("");
+
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [apiError, setApiError] = useState<string | null>(null);
 
   const router = useRouter();
 
@@ -69,33 +84,47 @@ export default function CargaSaldoPage() {
   const handleMontoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setMontoManual(e.target.value);
     setSelectedAmount(null);
+    if (errors.amount) setErrors(prev => ({ ...prev, amount: undefined }));
+    setApiError(null);
   };
 
   const handleSelectMonto = (amount: number) => {
     setSelectedAmount(amount);
     setMontoManual(String(amount));
+    if (errors.amount) setErrors(prev => ({ ...prev, amount: undefined }));
+    setApiError(null);
   };
 
-  const handleCargarSaldo = async () => {
+  // Validación de formulario avanzada
+  const validateForm = (): boolean => {
+    const newErrors: FormErrors = {};
     const amountAsNumber = parseFloat(montoManual);
 
     if (isNaN(amountAsNumber) || amountAsNumber <= 0) {
-      alert("Por favor, ingrese un monto válido.");
-      return;
+      newErrors.amount = "El monto a cargar debe ser mayor a 0.";
     }
-    if (!cardNumber || !expiration || !cvv || !cardName) {
-      alert("Por favor, complete todos los datos de la tarjeta.");
-      return;
+    if (cardNumber.replace(/\D/g, "").length !== 16) {
+      newErrors.cardNumber = "El número de tarjeta debe tener 16 dígitos.";
     }
-    if (cardNumber.length < 16) {
-      alert("El número de tarjeta debe tener al menos 16 dígitos.");
-      return;
+    if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(expiration)) {
+      newErrors.expiration = "El formato de vencimiento debe ser MM/YY.";
     }
-    if (!expiration.includes("/")) {
-      alert("El formato de vencimiento debe ser MM/YY.");
+    if (!/^\d{3,4}$/.test(cvv)) {
+      newErrors.cvv = "El CVV debe tener 3 o 4 dígitos.";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleCargarSaldo = async () => {
+    setApiError(null);
+    if (!validateForm()) {
       return;
     }
 
+    const amountAsNumber = parseFloat(montoManual);
+    // Creamos el DTO (cardName no se envía, pero lo validamos)
     const depositData: CardDetails = {
       cardNumber,
       expiration,
@@ -107,25 +136,23 @@ export default function CargaSaldoPage() {
       await cargarSaldo(depositData);
       setSaldoConfirmado(true);
       setSaldoActual(prevSaldo => (prevSaldo || 0) + amountAsNumber);
+
+      setMontoManual("");
+      setCardNumber("");
+      setCardName("");
+      setExpiration("");
+      setCvv("");
+      setSelectedAmount(null);
+      setErrors({});
     } catch (error: any) {
       console.error("Error de red al cargar saldo:", error.message);
-      let errorMessage = "Error al cargar el saldo. Intente de nuevo.";
-      try {
-        const errorObj = JSON.parse(error.message);
-        if (errorObj.message && Array.isArray(errorObj.message)) {
-          errorMessage = errorObj.message.join("\n");
-        } else if (errorObj.message) {
-          errorMessage = errorObj.message;
-        }
-      } catch (e) {
-        errorMessage = error.message;
-      }
-      alert(errorMessage);
+      setApiError(`Error al cargar el saldo: ${error.message}`);
     }
   };
 
   return (
     <main className="w-full flex flex-col gap-8 bg-white">
+      {/* ... (Header sin cambios) ... */}
       <div className="pt-9.5 pb-9.5 pl-8 flex gap-4 items-center space-x-2 text-sm text-muted-foreground border-b h-[53px]">
         <PanelLeft size={15} />
         <span className="text-muted-foreground">|</span>
@@ -147,7 +174,7 @@ export default function CargaSaldoPage() {
       </div>
 
       <div>
-        {/* Saldo Actual */}
+        {/* ... (Saldo Actual sin cambios) ... */}
         <div className="border rounded-xl flex flex-row justify-between m-8 mt-4 p-5 pl-6 pt-8 pr-10">
           <div className="flex flex-col gap-2">
             <h2 className="text-2xl font-bold">Saldo Actual</h2>
@@ -164,25 +191,35 @@ export default function CargaSaldoPage() {
         <div className="border rounded-xl m-8 mt-4 pt-8 ">
           <div className="pb-3 border-b">
             <h4 className="text-base font-bold pl-6 pb-5 ">
-              Tarjeta de Débito/CrédITO
+              Tarjeta de Débito/Crédito
             </h4>
           </div>
           <div className=" border-b">
-            <div className="grid grid-cols-2  pt-8 ml-6 pb-8 gap-3 mr-8">
-              <div className=" font-light">
-                <span>Número de la tarjeta</span>
-              </div>
-              <div className="font-light">
-                <span>Nombre y apellido que aparece en la tarjeta</span>
-              </div>
-              <div>
+            <div className="grid grid-cols-2  pt-8 ml-6 pb-8 gap-x-8 gap-y-3 mr-8">
+              {/* --- Campo Número de Tarjeta --- */}
+              <div className="space-y-1">
+                <span className="font-light text-sm">Número de la tarjeta</span>
                 <Input
-                  placeholder="1234 5678 9012 345"
+                  placeholder="0000 0000 0000 0000"
                   value={cardNumber}
-                  onChange={e => setCardNumber(e.target.value)}
+                  onChange={e => {
+                    setCardNumber(e.target.value);
+                    if (errors.cardNumber)
+                      setErrors(prev => ({ ...prev, cardNumber: undefined }));
+                    setApiError(null);
+                  }}
+                  className={cn(errors.cardNumber && "border-red-500")}
                 />
+                {errors.cardNumber && (
+                  <p className="text-red-500 text-xs">{errors.cardNumber}</p>
+                )}
               </div>
-              <div>
+
+              {/* --- Campo Nombre y Apellido --- */}
+              <div className="space-y-1">
+                <span className="font-light text-sm">
+                  Nombre y apellido que aparece en la tarjeta
+                </span>
                 <Input
                   placeholder="Juan Perez"
                   value={cardName}
@@ -190,33 +227,55 @@ export default function CargaSaldoPage() {
                 />
               </div>
 
-              <div className=" font-light pt-6">
-                <span>Fecha de Vencimiento</span>
-              </div>
-              <div className="font-light pt-6">
-                <span>CVV</span>
-              </div>
-              <div>
+              {/* --- Campo Fecha de Vencimiento --- */}
+              <div className="space-y-1 pt-4">
+                <span className="font-light text-sm">Fecha de Vencimiento</span>
                 <Input
                   placeholder="MM/YY"
                   value={expiration}
-                  onChange={e => setExpiration(e.target.value)}
+                  onChange={e => {
+                    setExpiration(e.target.value);
+                    if (errors.expiration)
+                      setErrors(prev => ({ ...prev, expiration: undefined }));
+                    setApiError(null);
+                  }}
+                  className={cn(errors.expiration && "border-red-500")}
                 />
+                {errors.expiration && (
+                  <p className="text-red-500 text-xs">{errors.expiration}</p>
+                )}
               </div>
-              <div>
+
+              {/* --- Campo CVV --- */}
+              <div className="space-y-1 pt-4">
+                <span className="font-light text-sm">CVV</span>
                 <Input
                   placeholder="123"
                   value={cvv}
-                  onChange={e => setCvv(e.target.value)}
+                  onChange={e => {
+                    setCvv(e.target.value);
+                    if (errors.cvv)
+                      setErrors(prev => ({ ...prev, cvv: undefined }));
+                    setApiError(null);
+                  }}
+                  className={cn(errors.cvv && "border-red-500")}
                 />
+                {errors.cvv && (
+                  <p className="text-red-500 text-xs">{errors.cvv}</p>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Sección de Monto */}
+          {/* ... (Sección de Monto sin cambios) ... */}
           <div className="p-6">
             <h3 className="font-light">Monto a cargar</h3>
-            <div className="flex items-center border border-input rounded-full px-3 mt-5 py-2 w-full bg-white text-sm">
+            <div
+              className={cn(
+                "flex items-center border border-input rounded-full px-3 mt-5 py-2 w-full bg-white text-sm",
+                errors.amount && "border-red-500"
+              )}
+            >
               <span className="text-gray-500 mr-2">$</span>
               <input
                 type="number"
@@ -227,7 +286,12 @@ export default function CargaSaldoPage() {
                 onChange={handleMontoChange}
               />
             </div>
+            {errors.amount && (
+              <p className="text-red-500 text-xs pl-2 mt-1">{errors.amount}</p>
+            )}
           </div>
+
+          {/* ... (Botones de monto sin cambios) ... */}
           <div className="grid grid-cols-4 gap-4 justify-between pl-5 pr-5">
             <div className="w-[100%] justify-between">
               <Button
@@ -272,6 +336,11 @@ export default function CargaSaldoPage() {
           </div>
 
           <div className="p-5 slign-center justify-self-center align-content-center">
+            {apiError && (
+              <p className="text-red-500 text-sm text-center mb-4">
+                {apiError}
+              </p>
+            )}
             <Button
               className="w-[350px] cursor-pointer"
               onClick={handleCargarSaldo}
@@ -281,7 +350,7 @@ export default function CargaSaldoPage() {
           </div>
         </div>
 
-        {/* Popup de Confirmación */}
+        {/* ... (Popup de confirmación sin cambios) ... */}
         <AlertDialog open={saldoConfirmado} onOpenChange={setSaldoConfirmado}>
           <AlertDialogContent className="text-center w-[500px]">
             <AlertDialogHeader>

@@ -10,3 +10,12 @@ export interface Compra {
   date: string;
   total: number;
 }
+
+// CAMBIO: Añadimos y exportamos la interfaz CardDetails
+// Esta es la interfaz que tu APP usa (amount es un número)
+export interface CardDetails {
+  cardNumber: string;
+  expiration: string;
+  cvv: string;
+  amount: number;
+}
