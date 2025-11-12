@@ -1,20 +1,14 @@
 // lib/api/tienda.ts
 
 import { apiFetch } from "./client";
-// Asumimos que types.ts tiene Saldo y Compra
 import { Saldo, Compra } from "./types";
 
-// Este es el ID de tu usuario de prueba local
-const userId = "c8a85eb5-7018-4f16-a232-54dbd04140dc";
+const userId = "09109e49-e243-4db8-b3b8-291e1f997bda";
 
-// Interfaz de lo que la API envía
 interface ApiSaldoResponse {
-  balance: string; // La API envía el saldo como string
+  balance: string;
 }
 
-/**
- * Obtiene el saldo actual del usuario.
- */
 export async function getSaldo(): Promise<Saldo> {
   const apiData = await apiFetch<ApiSaldoResponse>(
     `/account/${userId}/balance`
@@ -24,35 +18,26 @@ export async function getSaldo(): Promise<Saldo> {
   };
 }
 
-/**
- * Obtiene el historial de compras del usuario.
- */
 export async function getHistorialCompras(): Promise<Compra[]> {
   return apiFetch<Compra[]>(`/users/${userId}/purchases`);
 }
 
-// CAMBIO: Esta es la interfaz que tu *app* usa (buena práctica)
 export interface CardDetails {
   cardNumber: string;
-  expiration: string; // <-- El nombre correcto
+  expiration: string;
   cvv: string;
-  amount: number; // <-- El tipo correcto (número)
+  amount: number;
 }
 
-/**
- * Realiza un depósito en la cuenta del usuario.
- */
 export async function cargarSaldo(depositData: CardDetails) {
-  // CAMBIO: Creamos el DTO para la API
-  // que cumpla con los requisitos que nos dio
   const apiRequestBody = {
     cardNumber: depositData.cardNumber,
     expiration: depositData.expiration,
     cvv: depositData.cvv,
-    amount: String(depositData.amount), // Convertimos a string para la API
+    amount: String(depositData.amount),
   };
 
-  return apiFetch<any>(`/account/${userId}/deposit`, {
+  return apiFetch<any>(`/account/${userId}/transactions`, {
     method: "POST",
     body: JSON.stringify(apiRequestBody),
   });

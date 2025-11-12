@@ -35,11 +35,9 @@ export default function CargaSaldoPage() {
   const [montoManual, setMontoManual] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
 
-  // Estados para los campos de la tarjeta
   const [cardNumber, setCardNumber] = useState("");
   const [expiration, setExpiration] = useState("");
   const [cvv, setCvv] = useState("");
-  // CAMBIO: Volvemos a agregar el estado para 'cardName'
   const [cardName, setCardName] = useState("");
 
   const router = useRouter();
@@ -81,7 +79,6 @@ export default function CargaSaldoPage() {
   const handleCargarSaldo = async () => {
     const amountAsNumber = parseFloat(montoManual);
 
-    // CAMBIO: Agregamos 'cardName' a la validación del frontend
     if (isNaN(amountAsNumber) || amountAsNumber <= 0) {
       alert("Por favor, ingrese un monto válido.");
       return;
@@ -99,8 +96,6 @@ export default function CargaSaldoPage() {
       return;
     }
 
-    // Creamos el DTO que espera la API
-    // NOTA: 'cardName' NO se incluye aquí, porque la API lo rechaza.
     const depositData: CardDetails = {
       cardNumber,
       expiration,
@@ -131,9 +126,7 @@ export default function CargaSaldoPage() {
 
   return (
     <main className="w-full flex flex-col gap-8 bg-white">
-      {/* Header */}
       <div className="pt-9.5 pb-9.5 pl-8 flex gap-4 items-center space-x-2 text-sm text-muted-foreground border-b h-[53px]">
-        {/* ...código del header... */}
         <PanelLeft size={15} />
         <span className="text-muted-foreground">|</span>
         <Breadcrumb>
@@ -156,7 +149,6 @@ export default function CargaSaldoPage() {
       <div>
         {/* Saldo Actual */}
         <div className="border rounded-xl flex flex-row justify-between m-8 mt-4 p-5 pl-6 pt-8 pr-10">
-          {/* ...código de saldo actual... */}
           <div className="flex flex-col gap-2">
             <h2 className="text-2xl font-bold">Saldo Actual</h2>
             <h3 className="text-xl text-[#404040] font-bold">
@@ -176,7 +168,6 @@ export default function CargaSaldoPage() {
             </h4>
           </div>
           <div className=" border-b">
-            {/* CAMBIO: Volvemos a agregar el campo "Nombre y apellido" */}
             <div className="grid grid-cols-2  pt-8 ml-6 pb-8 gap-3 mr-8">
               <div className=" font-light">
                 <span>Número de la tarjeta</span>
@@ -192,7 +183,6 @@ export default function CargaSaldoPage() {
                 />
               </div>
               <div>
-                {/* Campo restaurado y conectado al estado 'cardName' */}
                 <Input
                   placeholder="Juan Perez"
                   value={cardName}
@@ -225,7 +215,6 @@ export default function CargaSaldoPage() {
 
           {/* Sección de Monto */}
           <div className="p-6">
-            {/* ...código de monto... */}
             <h3 className="font-light">Monto a cargar</h3>
             <div className="flex items-center border border-input rounded-full px-3 mt-5 py-2 w-full bg-white text-sm">
               <span className="text-gray-500 mr-2">$</span>
@@ -240,7 +229,6 @@ export default function CargaSaldoPage() {
             </div>
           </div>
           <div className="grid grid-cols-4 gap-4 justify-between pl-5 pr-5">
-            {/* ...código de botones de monto... */}
             <div className="w-[100%] justify-between">
               <Button
                 onClick={() => handleSelectMonto(5000)}
@@ -284,7 +272,6 @@ export default function CargaSaldoPage() {
           </div>
 
           <div className="p-5 slign-center justify-self-center align-content-center">
-            {/* ...código de botón de confirmar... */}
             <Button
               className="w-[350px] cursor-pointer"
               onClick={handleCargarSaldo}
@@ -296,7 +283,6 @@ export default function CargaSaldoPage() {
 
         {/* Popup de Confirmación */}
         <AlertDialog open={saldoConfirmado} onOpenChange={setSaldoConfirmado}>
-          {/* ...código del popup... */}
           <AlertDialogContent className="text-center w-[500px]">
             <AlertDialogHeader>
               <div className="jutify-start">

@@ -7,6 +7,10 @@ import {
   getAcademicHistoryByUser,
   getEnrollmentsByUser,
 } from "@/lib/api/enrollments";
+import {
+  getNotificationsByUser,
+  patchReadNotification,
+} from "@/lib/api/notifs";
 
 import {
   Breadcrumb,
@@ -38,10 +42,7 @@ export default function MisCursosPage() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const userId = 1;
         const data = await getEnrollmentsByUser();
-
-        // 🔹 Filtramos solo los que están en progreso
         const inProgress = (data as any[]).filter(
           enrollment => enrollment.status === "in_progress"
         );
@@ -62,6 +63,7 @@ export default function MisCursosPage() {
       try {
         const userId = 1;
         const data = await getAcademicHistoryByUser();
+
         sethistoricEnrollments(data as any[]);
       } catch (err) {
         console.error("❌ Error al traer inscripciones:", err);
@@ -74,7 +76,7 @@ export default function MisCursosPage() {
 
   const semestresUnicos = Array.from(
     new Set(historicEnrollments.map(e => `${e.year}-${e.semester}`))
-  ).sort((a, b) => b.localeCompare(a)); // Orden descendente
+  ).sort((a, b) => b.localeCompare(a));
 
   const historialFiltrado =
     semestreSeleccionado && semestreSeleccionado !== "all"
@@ -163,11 +165,9 @@ export default function MisCursosPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  {/* Opción global "Todos los semestres" */}
                   <SelectItem value="all">Todos los semestres</SelectItem>
                 </SelectGroup>
 
-                {/* ✅ Agrupar por año */}
                 {Object.entries(
                   historicEnrollments.reduce(
                     (acc: Record<string, string[]>, h) => {
@@ -179,7 +179,7 @@ export default function MisCursosPage() {
                     {}
                   )
                 )
-                  .sort(([a], [b]) => b.localeCompare(a)) // orden descendente por año
+                  .sort(([a], [b]) => b.localeCompare(a))
                   .map(([year, semestres]) => (
                     <SelectGroup key={year}>
                       <SelectLabel>{year}</SelectLabel>

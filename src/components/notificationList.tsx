@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState /*, useEffect*/ } from "react";
+import React, { useEffect, useState /*, useEffect*/ } from "react";
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { getAllNotificationsByUser } from "@/lib/api/notifs";
 
 interface Notification {
   id: number;
@@ -15,51 +16,6 @@ interface Notification {
   context: string;
   contextLink: string;
 }
-
-const MOCK_NOTIFICATIONS: Notification[] = [
-  {
-    id: 1,
-    type: "evento",
-    title: "Próximo examen Final",
-    description:
-      "Examen final de Calculo Diferencial programado para el 15 de Febrero de 2025 a las 8:00.",
-    date: "2025-10-06T09:00:00Z",
-    link: "/examen/calculo",
-    context: "Cálculo Diferencial",
-    contextLink: "/misCursos/calculo",
-  },
-  {
-    id: 2,
-    type: "examen",
-    title: "Nueva clasificación disponible",
-    description: "Tu clasificación de programación II ya está disponible.",
-    date: "2025-10-06T08:00:00Z",
-    link: "/resultados/programacion",
-    context: "Programación III",
-    contextLink: "/misCursos/programacion-iii",
-  },
-  {
-    id: 3,
-    type: "evento",
-    title: "Reunión informativa nuevas carreras",
-    description:
-      "Nueva reunión informativa de carreras el día 25 Febrero. Anotate ya.",
-    date: "2025-10-06T07:30:00Z",
-    link: "/eventos/reunion",
-    context: "Calendario",
-    contextLink: "/calendario",
-  },
-  {
-    id: 4,
-    type: "sancion",
-    title: "Nueva sanción publicada",
-    description: "Se encontró una nueva sanción en tu registro académico.",
-    date: "2025-10-06T07:00:00Z",
-    link: "/biblioteca/sanciones",
-    context: "Biblioteca",
-    contextLink: "/biblioteca",
-  },
-];
 
 const getBadgeProps = (type: Notification["type"]) => {
   switch (type) {
@@ -104,9 +60,13 @@ const NotificationItem: React.FC<{ notification: Notification }> = ({
 
             <div className="flex items-center text-sm text-gray-500 hover:text-gray-700">
               <ArrowUpRight size={14} className="mr-1" />
-              <Link href={notification.contextLink}>
-                {notification.context}
-              </Link>
+              {notification.contextLink ? (
+                <Link href={notification.contextLink}>
+                  {notification.context}
+                </Link>
+              ) : (
+                <span>{notification.context}</span>
+              )}
             </div>
           </div>
         </div>
@@ -121,23 +81,25 @@ const NotificationItem: React.FC<{ notification: Notification }> = ({
 
 // 📋 Lista completa
 export default function NotificationList() {
-  const [notifications, setNotifications] =
-    useState<Notification[]>(MOCK_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [activeTab, setActiveTab] = useState<
     "todos" | "examenes" | "eventos" | "sanciones"
   >("todos");
 
-  // 🔄 FUTURO: Carga dinámica desde backend
-  /*
   useEffect(() => {
-    fetch("/api/notifications")
-      .then(res => res.json())
-      .then((data: Notification[]) => setNotifications(data))
-      .catch(err => console.error("Error al obtener notificaciones:", err));
-  }, []);
-  */
+    async function fetchNotifications() {
+      try {
+        const data = await getAllNotificationsByUser();
+        console.log("📬 Notificaciones desde backend:", data);
+        setNotifications(data || []);
+      } catch (err) {
+        console.error("❌ Error al traer notificaciones:", err);
+      }
+    }
 
-  // ✅ Filtrado corregido
+    fetchNotifications();
+  }, []);
+
   const filtered =
     activeTab === "todos"
       ? notifications

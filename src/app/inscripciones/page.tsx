@@ -76,7 +76,7 @@ export default function InscripcionesPage() {
   const handleCursoClick = (courseId: string, commissionId: string) => {
     setSelectedCommissions(prev => ({
       ...prev,
-      [courseId]: prev[courseId] === commissionId ? "" : commissionId, // toggle
+      [courseId]: prev[courseId] === commissionId ? "" : commissionId,
     }));
   };
 
@@ -112,7 +112,6 @@ export default function InscripcionesPage() {
 
   if (loading) return <Loader message="Cargando inscripciones..." />;
 
-  // Calcular cuántas materias fueron seleccionadas
   const totalSeleccionadas =
     Object.values(selectedCommissions).filter(Boolean).length;
 

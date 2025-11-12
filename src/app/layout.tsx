@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import NotificationPopup from "@/components/ui/NotificationsPuopup"; // 🔔 importamos componente cliente
 
 export const metadata: Metadata = {
   title: "UADE Connect",
@@ -16,8 +17,11 @@ export default function RootLayout({
       <body className="flex h-screen">
         <SidebarProvider>
           <AppSidebar />
-          <main className="flex-1 overflow-auto bg-white-50">{children}</main>
+          <main className="flex-1 bg-white overflow-y-auto">{children}</main>
         </SidebarProvider>
+
+        {/* 🔔 Notificación global */}
+        <NotificationPopup />
       </body>
     </html>
   );

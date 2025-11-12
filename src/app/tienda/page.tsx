@@ -5,7 +5,6 @@ import Link from "next/link";
 import { PanelLeft, Plus, X } from "lucide-react";
 
 import { getSaldo, getHistorialCompras } from "@/lib/api/tienda";
-// CAMBIO: Importamos los tipos desde el nuevo archivo
 import { Saldo, Compra } from "@/lib/api/types";
 
 import {
@@ -23,9 +22,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
 
-// CAMBIO: Borramos las interfaces de Saldo y Compra de aquí
-
-// --- Componente ---
 export default function TiendaPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPurchase, setSelectedPurchase] = useState<Compra | null>(null);
@@ -37,18 +33,16 @@ export default function TiendaPage() {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        // 'saldoData' ahora es de tipo 'Saldo' gracias al Paso 2
         const saldoData = await getSaldo();
-        setSaldo(saldoData); // ✅ ¡Error arreglado!
+        setSaldo(saldoData);
       } catch (error: any) {
         console.error("No se encontró la cuenta de saldo", error.message);
         setSaldo({ balance: 0 });
       }
 
       try {
-        // 'historialData' ahora es de tipo 'Compra[]'
         const historialData = await getHistorialCompras();
-        setHistorial(historialData); // ✅ ¡Error arreglado!
+        setHistorial(historialData);
       } catch (error: any) {
         console.error("No se encontró historial de compras", error.message);
         setHistorial([]);
@@ -59,8 +53,6 @@ export default function TiendaPage() {
     fetchData();
   }, []);
 
-  // ... (El resto de tu componente y JSX no necesita cambios)
-  // --- Funciones de Formato ---
   const formatCurrency = (amount: number) => {
     const options: Intl.NumberFormatOptions = {
       style: "currency",

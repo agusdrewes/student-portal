@@ -63,7 +63,7 @@ export default function CursoDetallePage() {
     async function fetchData() {
       try {
         if (!commissionId) return;
-        setLoading(true); // 🔹 empezamos a cargar
+        setLoading(true);
 
         const [courseData, auxAttendance, auxgrades] = await Promise.all([
           getEnrollmentDetailsByid(commissionId),
@@ -79,7 +79,7 @@ export default function CursoDetallePage() {
       } catch (err) {
         console.error("❌ Error al traer datos del curso:", err);
       } finally {
-        setLoading(false); // 🔹 apagamos el loader SIEMPRE
+        setLoading(false);
       }
     }
 

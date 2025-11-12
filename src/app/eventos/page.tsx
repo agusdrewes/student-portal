@@ -25,9 +25,11 @@ import {
 import { Badge } from "@/components/ui/badge";
 import Loader from "@/components/ui/loader";
 
+import { getEventsByUser } from "@/lib/api/calendar";
+
 const PAGE_TITLE = "Calendario Académico";
 
-type EventType = "exam" | "event";
+type EventType = "exam" | "event" | "extracurricular" | "holiday" | "class";
 type UniEvent = {
   id: string;
   type: EventType;
@@ -42,8 +44,9 @@ type DiningSlot = { label: string; from: string; to: string };
 const dotColors: Record<string, string> = {
   exam: "bg-blue-500",
   event: "bg-amber-600",
-  holiday: "bg-green-500",
-  class: "bg-purple-500",
+  extracurricular: "bg-green-600",
+  holiday: "bg-purple-500",
+  class: "bg-gray-500",
 };
 
 const TZ = "America/Argentina/Buenos_Aires" as const;
@@ -127,22 +130,21 @@ export default function EventosPage() {
     async function fetchEvents() {
       try {
         setLoading(true);
-        const res = await fetch(
-          "http://localhost:3000/calendar/user/6b4eab19-c3a5-406d-9002-2e3a0e8dbcc5"
-        );
-        if (!res.ok) throw new Error("Error al obtener eventos");
-        const data = await res.json();
+        const data = await getEventsByUser();
 
-        // 🔥 Normalizamos tipo y fecha
-        const fixed = data.map((ev: any) => {
-          const normalizedType = ev.eventType?.toLowerCase?.() ?? "event"; // por si viene "EXAM" o null
-          return {
-            ...ev,
-            type: normalizedType as EventType,
-            date: ev.date.slice(0, 10),
-          };
-        });
+        const fixed = data.map((item: any) => ({
+          id: item.id,
+          title: item.title,
+          description: item.description,
+          date: item.date?.slice(0, 10),
+          time: new Date(item.startDateTime).toLocaleTimeString("es-AR", {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          type: (item.eventType?.toLowerCase?.() ?? "event") as EventType,
+        }));
 
+        console.log("✅ Eventos normalizados:", fixed);
         setEvents(fixed);
       } catch (err) {
         console.error("❌ Error al traer eventos:", err);
@@ -153,11 +155,9 @@ export default function EventosPage() {
     fetchEvents();
   }, []);
 
-  // ✅ FIX: llenar correctamente el mapa de eventos por fecha
   const eventsByDay = useMemo(() => {
     const map = new Map<string, UniEvent[]>();
     events.forEach(ev => {
-      // usamos directamente la propiedad 'date' sin convertirla
       const dateKey = ev.date.slice(0, 10);
       if (!map.has(dateKey)) map.set(dateKey, []);
       map.get(dateKey)!.push(ev);
@@ -403,15 +403,31 @@ export default function EventosPage() {
             </AlertDialogTitle>
 
             <div className="mt-3">
-              <Badge
-                className={
-                  activeEvent?.type === "event"
-                    ? "bg-amber-600/90 text-white"
-                    : "bg-blue-500 text-white"
-                }
-              >
-                {activeEvent?.type === "event" ? "Evento" : "Examen"}
-              </Badge>
+              {activeEvent?.type && (
+                <Badge
+                  className={
+                    activeEvent.type === "exam"
+                      ? "bg-blue-500 text-white"
+                      : activeEvent.type === "event"
+                        ? "bg-amber-600/90 text-white"
+                        : activeEvent.type === "extracurricular"
+                          ? "bg-green-600 text-white"
+                          : activeEvent.type === "holiday"
+                            ? "bg-purple-500 text-white"
+                            : "bg-gray-400 text-white"
+                  }
+                >
+                  {activeEvent.type === "exam"
+                    ? "Examen"
+                    : activeEvent.type === "event"
+                      ? "Evento"
+                      : activeEvent.type === "extracurricular"
+                        ? "Actividad extracurricular"
+                        : activeEvent.type === "holiday"
+                          ? "Feriado"
+                          : cap(activeEvent.type)}
+                </Badge>
+              )}
             </div>
 
             <div className="mt-4 space-y-3 text-sm">
