@@ -29,7 +29,7 @@ import { getEventsByUser } from "@/lib/api/calendar";
 
 const PAGE_TITLE = "Calendario Académico";
 
-type EventType = "exam" | "event" | "extracurricular" | "holiday" | "class";
+type EventType = "examen" | "event" | "extracurricular" | "holiday" | "class";
 type UniEvent = {
   id: string;
   type: EventType;
@@ -42,7 +42,7 @@ type UniEvent = {
 
 type DiningSlot = { label: string; from: string; to: string };
 const dotColors: Record<string, string> = {
-  exam: "bg-blue-500",
+  examen: "bg-blue-500",
   event: "bg-amber-600",
   extracurricular: "bg-green-600",
   holiday: "bg-purple-500",
@@ -406,7 +406,7 @@ export default function EventosPage() {
               {activeEvent?.type && (
                 <Badge
                   className={
-                    activeEvent.type === "exam"
+                    activeEvent.type === "examen"
                       ? "bg-blue-500 text-white"
                       : activeEvent.type === "event"
                         ? "bg-amber-600/90 text-white"
@@ -417,8 +417,8 @@ export default function EventosPage() {
                             : "bg-gray-400 text-white"
                   }
                 >
-                  {activeEvent.type === "exam"
-                    ? "Examen"
+                  {activeEvent.type === "examen"
+                    ? "examenen"
                     : activeEvent.type === "event"
                       ? "Evento"
                       : activeEvent.type === "extracurricular"

@@ -44,10 +44,10 @@ export default function NotificationPopup() {
 
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
-      <AlertDialogContent className="max-w-[420px] rounded-xl border border-gray-200 shadow-lg">
+      <AlertDialogContent className="max-w-[420px] rounded-xl  shadow-lg">
         <AlertDialogHeader>
           <AlertDialogTitle className="text-lg font-semibold">
-            🔔 {notif.title}
+            {notif.title}
           </AlertDialogTitle>
           <AlertDialogDescription className="text-gray-700 mt-2">
             {notif.message || "Tienes una nueva notificación."}

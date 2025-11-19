@@ -1,24 +1,26 @@
 "use client";
 
-import React, { useEffect, useState /*, useEffect*/ } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, ArrowUpRight } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { getAllNotificationsByUser } from "@/lib/api/notifs";
 
 interface Notification {
-  id: number;
-  type: "examen" | "sancion" | "evento";
+  id: string;
+  type: "exam" | "examen" | "sancion" | "evento";
   title: string;
-  description: string;
-  date: string;
-  link: string;
-  context: string;
-  contextLink: string;
+  message?: string;
+  description?: string;
+  date?: string;
+  context?: string;
+  contextLink?: string;
 }
 
+// 🏷️ Etiquetas según tipo
 const getBadgeProps = (type: Notification["type"]) => {
   switch (type) {
+    case "exam":
     case "examen":
       return { text: "Exámenes", class: "bg-[#6F97F0] text-[#FFFFFF]" };
     case "sancion":
@@ -30,52 +32,66 @@ const getBadgeProps = (type: Notification["type"]) => {
   }
 };
 
-const timeAgo = (date: string) => {
+// ⏱️ Tiempo relativo
+const timeAgo = (date?: string) => {
+  if (!date) return "";
   const diff = new Date().getTime() - new Date(date).getTime();
   const hours = Math.floor(diff / (1000 * 60 * 60));
   if (hours < 1) return "Hace minutos";
   return `Hace ${hours} horas`;
 };
 
-// 🔔 Componente de notificación individual
+// 🔔 Componente individual
 const NotificationItem: React.FC<{ notification: Notification }> = ({
   notification,
 }) => {
   const { text, class: badgeClass } = getBadgeProps(notification.type);
 
+  // 🔗 Rutas por tipo (por defecto)
+  const linkMap: Record<string, string> = {
+    exam: "/misCursos",
+    examen: "/misCursos",
+    evento: "/calendario",
+    sancion: "/biblioteca",
+  };
+
+  const contextLink =
+    notification.contextLink || linkMap[notification.type] || "/";
+  const context =
+    notification.context ||
+    (notification.type === "exam" ? "Mis Cursos" : "Notificación");
+
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-5 shadow-sm hover:shadow-md transition-all">
-      <div className="flex justify-between items-start">
-        <div className="flex-grow space-y-2">
-          <p className="font-semibold text-gray-800">{notification.title}</p>
-          <p className="text-sm text-gray-500">{notification.description}</p>
+    <Link href={contextLink} className="block">
+      <div className="bg-white rounded-lg border border-gray-200 p-5 shadow-sm hover:shadow-md transition-all cursor-pointer">
+        <div className="flex justify-between items-start">
+          <div className="flex-grow space-y-2">
+            <p className="font-semibold text-gray-800">{notification.title}</p>
+            <p className="text-sm text-gray-500">
+              {notification.message || notification.description}
+            </p>
 
-          <div className="flex items-center gap-4 pt-2">
-            <Badge
-              className={`font-medium rounded-md px-2 py-0.5 ${badgeClass}`}
-              variant="default"
-            >
-              {text}
-            </Badge>
+            <div className="flex items-center gap-4 pt-2">
+              <Badge
+                className={`font-medium rounded-md px-2 py-0.5 ${badgeClass}`}
+                variant="default"
+              >
+                {text}
+              </Badge>
 
-            <div className="flex items-center text-sm text-gray-500 hover:text-gray-700">
-              <ArrowUpRight size={14} className="mr-1" />
-              {notification.contextLink ? (
-                <Link href={notification.contextLink}>
-                  {notification.context}
-                </Link>
-              ) : (
-                <span>{notification.context}</span>
-              )}
+              <div className="flex items-center text-sm text-gray-500 hover:text-gray-700">
+                <ArrowUpRight size={14} className="mr-1" />
+                <span>{context}</span>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="text-xs text-gray-400 mt-1">
-          {timeAgo(notification.date)}
+          <div className="text-xs text-gray-400 mt-1">
+            {timeAgo(notification.date)}
+          </div>
         </div>
       </div>
-    </div>
+    </Link>
   );
 };
 
@@ -105,17 +121,18 @@ export default function NotificationList() {
       ? notifications
       : notifications.filter(n => {
           const map: Record<string, Notification["type"]> = {
-            examenes: "examen",
+            examenes: "exam",
             eventos: "evento",
             sanciones: "sancion",
           };
-          return n.type === map[activeTab];
+          return n.type === map[activeTab] || n.type === map[activeTab];
         });
 
-  // 📊 Contadores dinámicos
   const counts = {
     todos: notifications.length,
-    examenes: notifications.filter(n => n.type === "examen").length,
+    examenes: notifications.filter(
+      n => n.type === "exam" || n.type === "examen"
+    ).length,
     eventos: notifications.filter(n => n.type === "evento").length,
     sanciones: notifications.filter(n => n.type === "sancion").length,
   };
@@ -129,7 +146,6 @@ export default function NotificationList() {
 
   return (
     <section className="bg-white w-full">
-      {/* Tabs estilo Figma */}
       <div className="flex gap-8 border-b border-gray-200 mb-6">
         {tabs.map(tab => (
           <button
@@ -146,7 +162,6 @@ export default function NotificationList() {
         ))}
       </div>
 
-      {/* Lista de notificaciones */}
       <div className="grid gap-4">
         {filtered.map(notif => (
           <NotificationItem key={notif.id} notification={notif} />

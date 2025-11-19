@@ -243,8 +243,8 @@ export default function InscripcionesPage() {
 
                   <span className="font-light text-sm p-8 pt-3 block">
                     Código: {curso.code}{" "}
-                    {curso.correlates?.length
-                      ? `- Correlativas: ${curso.correlates.join(", ")}`
+                    {curso.correlatives?.length
+                      ? `- Correlativas: ${curso.correlatives.map(c => c.name).join(", ")}`
                       : "- Correlativas: Ninguna"}
                   </span>
 

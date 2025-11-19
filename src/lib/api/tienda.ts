@@ -5,7 +5,7 @@ import { apiFetch } from "./client";
 import { Saldo, Compra, CardDetails } from "./types";
 
 // Este es el ID de tu usuario de la NOTEBOOK
-const userId = "961093aa-88c5-4b0f-85a7-fcc45f21d7bb";
+const userId = "09109e49-e243-4db8-b3b8-291e1f997bda";
 
 // Interfaz de lo que la API envía
 interface ApiSaldoResponse {
@@ -43,7 +43,7 @@ export async function cargarSaldo(depositData: CardDetails) {
     amount: String(depositData.amount), // Convertimos a string para la API
   };
 
-  return apiFetch<any>(`/account/${userId}/deposit`, {
+  return apiFetch<any>(`/account/${userId}/transactions`, {
     method: "POST",
     body: JSON.stringify(apiRequestBody),
   });
